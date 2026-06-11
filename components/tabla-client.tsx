@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { UserAvatar } from '@/components/user-avatar'
 import { updateProfile, updateAvatar } from '@/lib/actions'
 import { compressImageFile } from '@/lib/avatar-utils'
+import { cn } from '@/lib/utils'
 
 interface Player {
   id: string
@@ -67,7 +68,7 @@ function PodiumCell({
 
   return (
     <div
-      className={`podium-cell${isMe ? ' is-me' : ''}`}
+      className={cn('podium-cell', isMe && 'is-me')}
       style={{
         flex: 1,
         ...(!isMe ? { borderTopColor: borderColor, borderTopWidth: '2px' } : {}),
@@ -190,7 +191,7 @@ export function TablaClient({ players, myProfile }: Props) {
 
             <button
               type="button"
-              className="mb-4 cursor-pointer transition-colors disabled:cursor-wait disabled:opacity-60 hover:enabled:[&_[data-slot=avatar]]:after:border-fg-2"
+              className="mb-4 cursor-pointer transition-opacity disabled:cursor-wait disabled:opacity-60 hover:enabled:opacity-80"
               onClick={handleAvatarSelect}
               disabled={isUploading}
               aria-label="Subir foto de perfil"
@@ -293,7 +294,7 @@ export function TablaClient({ players, myProfile }: Props) {
         <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '12px' }}>
           — RANKING COMPLETO
         </div>
-        <div style={{ border: '1px solid var(--fg-4)' }}>
+        <div className="cell">
           <table className="dtable">
             <thead>
               <tr>

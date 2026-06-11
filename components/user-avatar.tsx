@@ -12,21 +12,17 @@ function initialsFrom(name: string) {
     .toUpperCase()
 }
 
-const userAvatarVariants = cva('!rounded-full shrink-0 after:!rounded-full', {
+const userAvatarVariants = cva('!rounded-full shrink-0', {
   variants: {
     size: {
       sm: '!size-6',
       md: '!size-8',
       lg: '!size-20',
     },
-    highlight: {
-      true: 'after:border-accent',
-      false: 'after:border-border',
-    },
+    
   },
   defaultVariants: {
     size: 'md',
-    highlight: false,
   },
 })
 
@@ -56,13 +52,12 @@ export function UserAvatar({
   name,
   imageUrl,
   size = 'md',
-  highlight = false,
   className,
 }: UserAvatarProps) {
   return (
-    <Avatar className={cn(userAvatarVariants({ size, highlight }), className)}>
+    <Avatar className={cn(userAvatarVariants({ size }), className)}>
       {imageUrl ? (
-        <AvatarImage src={imageUrl} alt={name} className="!rounded-full object-cover" />
+        <AvatarImage src={imageUrl} alt={name} className="rounded-full object-cover" />
       ) : null}
       <AvatarFallback className={fallbackTextVariants({ size })} delay={0}>
         {initialsFrom(name)}

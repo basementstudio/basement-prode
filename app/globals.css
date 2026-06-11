@@ -525,19 +525,15 @@
     color: var(--fg-3);
     text-align: left;
     padding: 10px 16px;
-    border-bottom: 1px solid var(--fg-4);
+    border: 1px solid var(--fg-4);
     font-weight: 500;
   }
 
   & td {
     padding: 12px 16px;
-    border-bottom: 1px solid var(--fg-4);
+    border: 1px solid var(--fg-4);
     color: var(--fg-2);
     font-size: 14px;
-  }
-
-  & tr:last-child td {
-    border-bottom: none;
   }
 
   & tr.my-row td {
@@ -767,55 +763,6 @@
 
 @utility highlight-flash {
   animation: var(--animate-highlight-pulse);
-}
-
-/* ---- Carrusel de grupos ---- */
-
-@utility group-carousel {
-  position: relative;
-  overflow: hidden;
-}
-
-@utility group-slide {
-  transition:
-    transform var(--duration-slow) var(--ease-base),
-    opacity var(--duration-slow) var(--ease-base);
-
-  &.enter {
-    transform: translateX(0);
-    opacity: 1;
-  }
-
-  &.exit {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-
-  &.enter-from-right {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-@utility group-dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin: 24px 0;
-}
-
-@utility group-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--fg-4);
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  transition: background var(--duration-base) var(--ease-base);
-
-  &.active {
-    background: var(--fg-1);
-  }
 }
 
 /* ---- Aciertos ---- */

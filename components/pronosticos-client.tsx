@@ -11,10 +11,12 @@ import {
 import type { MatchDataSource } from '@/lib/wc2026/get-matches'
 import { formatTimezoneLabel, getUserTimezone } from '@/lib/wc2026/format-local'
 import { savePrediction } from '@/lib/actions'
+import { GROUP_ADVANCE_MS, focusMatchInput } from '@/lib/prediction-flow'
 import { MatchCard } from '@/components/match-card'
+import { GroupMatchesCarousel } from '@/components/group-matches-carousel'
+import type { CarouselApi } from '@/components/ui/carousel'
 
 type ViewMode = 'todos' | 'por-grupo'
-type SlideState = 'enter' | 'exit' | 'entering'
 type PredMap = Record<string, { home: number; away: number }>
 
 interface Props {
@@ -23,48 +25,23 @@ interface Props {
   dataSource: MatchDataSource
 }
 
-function GroupHeader({ group }: { group: string }) {
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      padding: '16px',
-      borderBottom: '1px solid var(--fg-4)',
-      borderTop: '1px solid var(--fg-4)',
-      background: 'rgba(235,235,235,0.02)',
-    }}>
-      <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--fg-1)', letterSpacing: '-0.02em' }}>
-        GRUPO {group}
-      </span>
-      <div style={{ flex: 1, height: '1px', background: 'var(--fg-4)' }} />
-    </div>
-  )
+function findNextEditableMatch(list: Match[], afterId: string, now: Date): Match | undefined {
+  const start = list.findIndex(m => m.id === afterId)
+  if (start < 0) return undefined
+  for (let i = start + 1; i < list.length; i++) {
+    if (!isMatchLocked(list[i], now)) return list[i]
+  }
+  return undefined
 }
 
-function useSlideAdvance() {
-  const [slideState, setSlideState] = useState<SlideState>('enter')
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+function firstEditableMatchId(list: Match[], now: Date): string | null {
+  const match = list.find(m => !isMatchLocked(m, now))
+  return match?.id ?? null
+}
 
-  const advance = useCallback((onStep: () => void) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => {
-      setSlideState('exit')
-      setTimeout(() => {
-        onStep()
-        setSlideState('entering')
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => setSlideState('enter'))
-        })
-      }, 400)
-    }, 650)
-  }, [])
-
-  useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-  }, [])
-
-  return { slideState, advance }
+function firstUnsavedIndexInGroup(matches: Match[], predictions: PredMap): number {
+  const idx = matches.findIndex(m => !predictions[m.id])
+  return idx >= 0 ? idx : 0
 }
 
 function EmptyState({ message }: { message: string }) {
@@ -82,9 +59,21 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
   const [now, setNow] = useState(() => new Date())
   const [userTz] = useState(getUserTimezone)
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0)
-  const { slideState, advance } = useSlideAdvance()
+  const [activeMatchId, setActiveMatchId] = useState<string | null>(null)
+  const [activeGroupMatchIndex, setActiveGroupMatchIndex] = useState(0)
+  const [focusToken, setFocusToken] = useState(0)
+  const carouselApiRef = useRef<CarouselApi | null>(null)
+  const groupAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const initializedRef = useRef(false)
-  const prevGroupSavedRef = useRef<number | null>(null)
+  const prevViewModeRef = useRef<ViewMode>(viewMode)
+  const predictionsRef = useRef(predictions)
+  const groupsUpcomingRef = useRef<{ group: string; matches: Match[] }[]>([])
+  predictionsRef.current = predictions
+
+  const bumpFocus = useCallback((matchId: string) => {
+    setFocusToken(t => t + 1)
+    focusMatchInput(matchId)
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 30_000)
@@ -116,61 +105,115 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
     return groups.sort((a, b) => a.group.localeCompare(b.group))
   }, [upcoming])
 
+  groupsUpcomingRef.current = groupsUpcoming
+
   const savedCount = upcoming.filter(m => predictions[m.id]).length
   const progress = upcoming.length > 0 ? (savedCount / upcoming.length) * 100 : 100
   const tzLabel = formatTimezoneLabel(userTz)
+  const currentGroup = groupsUpcoming[currentGroupIndex]
 
   useEffect(() => {
     if (initializedRef.current) return
     initializedRef.current = true
+    setActiveMatchId(firstEditableMatchId(sortedMatches, now))
     const firstGroup = groupsUpcoming.findIndex(g =>
       g.matches.some(m => !predictions[m.id]),
     )
     if (firstGroup >= 0) setCurrentGroupIndex(firstGroup)
-  }, [groupsUpcoming, predictions])
+  }, [sortedMatches, groupsUpcoming, predictions, now])
 
   useEffect(() => {
-    if (viewMode !== 'por-grupo') return
+    if (viewMode === 'todos') {
+      setActiveMatchId(prev => {
+        if (prev && sortedMatches.some(m => m.id === prev && !isMatchLocked(m, now))) {
+          return prev
+        }
+        return firstEditableMatchId(sortedMatches, now)
+      })
+    }
+  }, [viewMode, sortedMatches, now])
+
+  useEffect(() => {
+    const enteringPorGrupo = viewMode === 'por-grupo' && prevViewModeRef.current !== 'por-grupo'
+    prevViewModeRef.current = viewMode
+    if (!enteringPorGrupo) return
+
     const firstGroup = groupsUpcoming.findIndex(g =>
-      g.matches.some(m => !predictions[m.id]),
+      g.matches.some(m => !predictionsRef.current[m.id]),
     )
     setCurrentGroupIndex(firstGroup >= 0 ? firstGroup : 0)
-  }, [viewMode, groupsUpcoming, predictions])
+  }, [viewMode, groupsUpcoming])
+
+  useEffect(() => {
+    const group = groupsUpcomingRef.current[currentGroupIndex]
+    if (!group) return
+    setActiveGroupMatchIndex(
+      firstUnsavedIndexInGroup(group.matches, predictionsRef.current),
+    )
+  }, [currentGroupIndex])
+
+  useEffect(() => () => {
+    if (groupAdvanceTimerRef.current) clearTimeout(groupAdvanceTimerRef.current)
+  }, [])
+
+  const handleCarouselApiReady = useCallback((api: CarouselApi) => {
+    carouselApiRef.current = api
+  }, [])
 
   const handleSave = useCallback(async (matchId: string, home: number, away: number) => {
     await savePrediction(matchId, home, away, Date.now())
     setPredictions(prev => ({ ...prev, [matchId]: { home, away } }))
   }, [])
 
-  useEffect(() => {
-    if (viewMode !== 'por-grupo' || groupsUpcoming.length === 0) return
-    const group = groupsUpcoming[currentGroupIndex]
-    if (!group) return
-
-    const savedInGroup = group.matches.filter(m => predictions[m.id]).length
-    const prevSaved = prevGroupSavedRef.current
-    prevGroupSavedRef.current = savedInGroup
-
-    if (prevSaved == null) return
-
-    const allSaved = savedInGroup === group.matches.length
-    const justCompleted = allSaved && savedInGroup > prevSaved
-
-    if (justCompleted && currentGroupIndex < groupsUpcoming.length - 1) {
-      advance(() => setCurrentGroupIndex(prev => prev + 1))
+  const handleTodosMatchComplete = useCallback((matchId: string) => {
+    const next = findNextEditableMatch(sortedMatches, matchId, now)
+    if (next) {
+      setActiveMatchId(next.id)
+      bumpFocus(next.id)
+    } else {
+      setActiveMatchId(null)
     }
-  }, [predictions, groupsUpcoming, currentGroupIndex, viewMode, advance])
+  }, [sortedMatches, now, bumpFocus])
 
-  useEffect(() => {
-    prevGroupSavedRef.current = null
-  }, [currentGroupIndex, viewMode])
+  const handleGroupMatchComplete = useCallback((matchId: string) => {
+    const group = groupsUpcomingRef.current[currentGroupIndex]
+    if (!group) return
+    const idx = group.matches.findIndex(m => m.id === matchId)
+    if (idx < 0) return
+
+    if (idx < group.matches.length - 1) {
+      const nextMatch = group.matches[idx + 1]
+      setActiveGroupMatchIndex(idx + 1)
+      bumpFocus(nextMatch.id)
+      return
+    }
+
+    if (currentGroupIndex < groupsUpcomingRef.current.length - 1) {
+      if (groupAdvanceTimerRef.current) clearTimeout(groupAdvanceTimerRef.current)
+      const fromIndex = currentGroupIndex
+      groupAdvanceTimerRef.current = setTimeout(() => {
+        const nextGroupIndex = fromIndex + 1
+        const nextGroup = groupsUpcomingRef.current[nextGroupIndex]
+        if (!nextGroup) return
+        const nextMatchIndex = firstUnsavedIndexInGroup(
+          nextGroup.matches,
+          predictionsRef.current,
+        )
+        const nextMatch = nextGroup.matches[nextMatchIndex]
+        setCurrentGroupIndex(nextGroupIndex)
+        setActiveGroupMatchIndex(nextMatchIndex)
+        carouselApiRef.current?.scrollTo(nextGroupIndex)
+        if (nextMatch) {
+          setTimeout(() => bumpFocus(nextMatch.id), 150)
+        }
+      }, GROUP_ADVANCE_MS)
+    }
+  }, [currentGroupIndex, bumpFocus])
 
   const viewOptions: { key: ViewMode; label: string; count: number }[] = [
     { key: 'todos', label: 'Todos', count: matches.length },
     { key: 'por-grupo', label: 'Por grupo', count: groupsUpcoming.length },
   ]
-
-  const currentGroup = groupsUpcoming[currentGroupIndex]
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px 80px' }}>
@@ -191,7 +234,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
             Cargá tus pronósticos.
           </h1>
           <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5' }}>
-            En Por grupo cargás partido a partido y avanzás al siguiente grupo al terminar. Horarios en {tzLabel}.
+            Local → visitante → siguiente partido, al instante. En Por grupo, al terminar el último partido pasás al siguiente grupo. Horarios en {tzLabel}.
           </p>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '24px' }}>
@@ -200,7 +243,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
             <span style={{ fontSize: '16px', color: 'var(--fg-3)', fontWeight: 400 }}> / {upcoming.length}</span>
           </div>
           <div className="mono-label" style={{ color: 'var(--fg-3)', marginTop: '4px' }}>
-            por jugar
+            por cargar
           </div>
         </div>
       </div>
@@ -237,6 +280,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
           <div style={{ border: '1px solid var(--fg-4)' }}>
             {sortedMatches.map(match => {
               const editable = !isMatchLocked(match, now)
+              const isActive = activeMatchId === match.id
               return (
                 <MatchCard
                   key={match.id}
@@ -245,7 +289,11 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
                   onSave={handleSave}
                   now={now}
                   userTz={userTz}
-                  saveWhenComplete={editable}
+                  focused={editable && isActive}
+                  highlighted={isActive}
+                  focusToken={isActive ? focusToken : 0}
+                  saveWhenComplete={editable && isActive}
+                  onSaved={() => handleTodosMatchComplete(match.id)}
                 />
               )
             })}
@@ -257,52 +305,19 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
         groupsUpcoming.length === 0 ? (
           <EmptyState message="No quedan grupos con partidos por jugar" />
         ) : (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
-                GRUPO {currentGroup?.group ?? '—'}
-              </span>
-              <span className="mono-label" style={{ color: 'var(--fg-2)' }}>
-                {currentGroupIndex + 1} / {groupsUpcoming.length}
-              </span>
-            </div>
-            <div className="group-carousel">
-              <div className={`group-slide ${slideState === 'exit' ? 'exit' : slideState === 'entering' ? 'enter-from-right' : 'enter'}`}>
-                {currentGroup && (
-                  <>
-                    <GroupHeader group={currentGroup.group} />
-                    <div style={{ border: '1px solid var(--fg-4)', borderTop: 'none' }}>
-                      {currentGroup.matches.map((match, i) => (
-                        <MatchCard
-                          key={match.id}
-                          match={match}
-                          prediction={predictions[match.id]}
-                          onSave={handleSave}
-                          now={now}
-                          userTz={userTz}
-                          focused={i === 0}
-                          saveWhenComplete
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="group-dots">
-              {groupsUpcoming.map((g, i) => (
-                <button
-                  key={g.group}
-                  className={`group-dot${i === currentGroupIndex ? ' active' : ''}`}
-                  onClick={() => {
-                    if (i === currentGroupIndex || slideState !== 'enter') return
-                    advance(() => setCurrentGroupIndex(i))
-                  }}
-                  aria-label={`Grupo ${g.group}`}
-                />
-              ))}
-            </div>
-          </>
+          <GroupMatchesCarousel
+            groups={groupsUpcoming}
+            currentGroupIndex={currentGroupIndex}
+            onGroupIndexChange={setCurrentGroupIndex}
+            activeGroupMatchIndex={activeGroupMatchIndex}
+            focusToken={focusToken}
+            predictions={predictions}
+            onSave={handleSave}
+            now={now}
+            userTz={userTz}
+            onGroupMatchComplete={handleGroupMatchComplete}
+            onApiReady={handleCarouselApiReady}
+          />
         )
       )}
     </div>

@@ -108,7 +108,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
             className="flex h-9 items-center gap-2 border border-border px-3 no-underline transition-colors duration-200 ease-base hover:border-fg-2 hover:bg-gray-800"
             aria-label="Ir a tu perfil"
           >
-            <UserAvatar name={userName} imageUrl={avatarUrl} size="sm" highlight />
+            <UserAvatar name={userName} imageUrl={avatarUrl} size="sm"  />
             <span className="font-mono text-[11px] uppercase text-fg-2">
               {userName.split(' ')[0]}
             </span>

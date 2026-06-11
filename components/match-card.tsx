@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import {
   getMatchDisplayScore,
   getMatchStatus,
@@ -14,10 +14,9 @@ import {
   formatKickoffTime,
 } from '@/lib/wc2026/format-local'
 import { calcPoints, scoreLabel } from '@/lib/scoring'
+import { INPUT_PAUSE_MS } from '@/lib/prediction-flow'
 import { ScoreInput } from '@/components/score-input'
 import { FlagStripes } from '@/components/flag-stripes'
-
-const INPUT_PAUSE_MS = 2000
 
 function MatchStatusBadge({
   status,
@@ -54,6 +53,8 @@ export interface MatchCardProps {
   userTz: string
   highlighted?: boolean
   focused?: boolean
+  /** Incrementar para forzar foco al input local (p. ej. al avanzar de partido). */
+  focusToken?: number
   onSaved?: () => void
   /** Guarda y notifica solo cuando el usuario editó local y visitante. */
   saveWhenComplete?: boolean
@@ -67,6 +68,7 @@ export function MatchCard({
   userTz,
   highlighted = false,
   focused = false,
+  focusToken = 0,
   onSaved,
   saveWhenComplete = false,
 }: MatchCardProps) {
@@ -93,11 +95,22 @@ export function MatchCard({
     awayEditedRef.current = false
   }, [prediction?.home, prediction?.away, prediction, match.id])
 
-  useEffect(() => {
-    if (focused && !locked) {
+  useLayoutEffect(() => {
+    if (!focused || locked) return
+    const frame = requestAnimationFrame(() => {
       homeRef.current?.focus()
+      homeRef.current?.select()
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [focused, locked, match.id, focusToken])
+
+  useEffect(() => {
+    if (focused || locked) return
+    const active = document.activeElement
+    if (active === homeRef.current || active === awayRef.current) {
+      ;(active as HTMLElement).blur()
     }
-  }, [focused, locked, match.id])
+  }, [focused, locked])
 
   const hasPred = !!prediction
   const displayScore = getMatchDisplayScore(match, status)
@@ -115,9 +128,9 @@ export function MatchCard({
     try {
       await onSave(match.id, h, a)
       setSaved(true)
-      savedCallbackRef.current?.()
     } finally {
       setSaving(false)
+      queueMicrotask(() => savedCallbackRef.current?.())
     }
   }
 
@@ -134,7 +147,7 @@ export function MatchCard({
         homeScore === (prediction?.home ?? 0) && awayScore === (prediction?.away ?? 0)
 
       if (unchanged) {
-        savedCallbackRef.current?.()
+        queueMicrotask(() => savedCallbackRef.current?.())
         return
       }
 
@@ -153,7 +166,8 @@ export function MatchCard({
 
     if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
     focusAwayTimerRef.current = setTimeout(() => {
-      if (document.activeElement === homeRef.current) {
+      const active = document.activeElement
+      if (active === homeRef.current) {
         awayRef.current?.focus()
       }
     }, INPUT_PAUSE_MS)
@@ -169,21 +183,16 @@ export function MatchCard({
     if (saveWhenComplete) {
       if (!bothEdited()) return
       if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-      const unchanged =
-        homeScore === (prediction?.home ?? 0) && awayScore === (prediction?.away ?? 0)
 
       autoSaveRef.current = setTimeout(() => {
-        if (unchanged) {
-          savedCallbackRef.current?.()
-        } else {
-          void commitSave()
-        }
+        void commitSave()
       }, INPUT_PAUSE_MS)
       return () => {
         if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
       }
     }
 
+    if (!focused) return
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
     if (homeScore !== (prediction?.home ?? 0) || awayScore !== (prediction?.away ?? 0)) {
       autoSaveRef.current = setTimeout(() => {
@@ -193,7 +202,7 @@ export function MatchCard({
     return () => {
       if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
     }
-  }, [homeScore, awayScore, locked, saving, prediction?.home, prediction?.away, saveWhenComplete])
+  }, [homeScore, awayScore, locked, saving, prediction?.home, prediction?.away, saveWhenComplete, focused])
 
   const cardClass = [
     'match-card scroll-target',
