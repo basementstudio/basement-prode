@@ -6,7 +6,7 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'prode/2026 — basement.studio',
+  title: 'PRODE/2026 — BASEMENT.STUDIO',
   description: 'Pool de pronósticos interno para el Mundial 2026. Solo crew de basement.',
   generator: 'v0.app',
 }

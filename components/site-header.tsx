@@ -4,7 +4,21 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from '@/lib/auth-client'
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+  avatarUrl?: string | null
+  displayName?: string | null
+}
+
+function initialsFrom(name: string) {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { data: session } = useSession()
@@ -15,36 +29,22 @@ export function SiteHeader() {
     router.refresh()
   }
 
-  const initials = session?.user?.name
-    ? session.user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-    : session?.user?.email?.slice(0, 2).toUpperCase() ?? '??'
+  const userName = displayName || session?.user?.name || session?.user?.email?.split('@')[0] || '??'
+  const userInitials = initialsFrom(userName)
 
   return (
     <header className="site-header">
-      {/* Brand mark */}
-      <Link href="/pronosticos" className="flex flex-col leading-none mr-auto" style={{ textDecoration: 'none' }}>
-        <span style={{
-          fontFamily: 'var(--font-sans)',
-          fontSize: '22px',
-          fontWeight: 700,
-          letterSpacing: '-0.04em',
-          color: 'var(--fg-1)',
-          lineHeight: 1,
-        }}>
-          prode/2026
-        </span>
-        <span className="mono-label" style={{ color: 'var(--fg-3)', fontSize: '10px', letterSpacing: '0.06em' }}>
-          basement.studio
-        </span>
+      <Link href="/pronosticos" className="site-brand" aria-label="Ir a pronósticos">
+        <span className="site-brand-title">PRODE/2026</span>
+        <span className="mono-label site-brand-sub">BASEMENT.STUDIO</span>
       </Link>
 
-      {/* Nav centrado */}
-      <nav className="absolute left-1/2 -translate-x-1/2 flex items-center" aria-label="Navegación principal">
+      <nav className="site-nav" aria-label="Navegación principal">
         <Link
           href="/pronosticos"
           className={`nav-link${pathname === '/pronosticos' || pathname === '/' ? ' active' : ''}`}
         >
-          pronósticos
+          PRONÓSTICOS
           {(pathname === '/pronosticos' || pathname === '/') && (
             <span className="nav-dot" aria-hidden="true" />
           )}
@@ -53,32 +53,32 @@ export function SiteHeader() {
           href="/tabla"
           className={`nav-link${pathname === '/tabla' ? ' active' : ''}`}
         >
-          tabla
+          TABLA
         </Link>
       </nav>
 
-      {/* User chip */}
       {session?.user && (
-        <div className="flex items-center gap-0 ml-auto">
-          <div className="user-chip" style={{ gap: '8px' }}>
+        <div className="site-header-actions">
+          <Link href="/tabla" className="user-chip" aria-label="Ir a tu perfil">
             <div
-              className="avatar"
-              style={{ width: '24px', height: '24px', fontSize: '9px', border: '1px solid var(--color-contrast)' }}
+              className="avatar avatar-sm"
               aria-hidden="true"
             >
-              {initials}
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={userName} />
+              ) : (
+                userInitials
+              )}
             </div>
-            <span className="mono-label" style={{ color: 'var(--fg-2)', fontSize: '11px' }}>
-              {session.user.name?.split(' ')[0] || session.user.email.split('@')[0]}
-            </span>
-          </div>
+            <span className="mono-label user-chip-name">{userName.split(' ')[0]}</span>
+          </Link>
           <button
             onClick={handleSignOut}
             className="btn"
             style={{ height: '36px', borderLeft: 'none' }}
             aria-label="Cerrar sesión"
           >
-            salir
+            SALIR
           </button>
         </div>
       )}

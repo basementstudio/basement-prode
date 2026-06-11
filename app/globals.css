@@ -174,7 +174,7 @@
 .site-header {
   display: flex;
   align-items: center;
-  height: 64px;
+  height: 52px;
   border-bottom: 1px solid var(--fg-4);
   padding: 0 24px;
   position: sticky;
@@ -182,6 +182,46 @@
   z-index: 50;
   background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(8px);
+}
+
+.site-brand {
+  display: flex;
+  flex-direction: column;
+  margin-right: auto;
+  text-decoration: none;
+  gap: 2px;
+}
+
+.site-brand-title {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--fg-1);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.site-brand-sub {
+  color: var(--fg-3);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.site-nav {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.site-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-left: auto;
 }
 
 /* ============================================================
@@ -194,7 +234,7 @@
   letter-spacing: 0.04em;
   color: var(--fg-2);
   padding: 0 16px;
-  height: 64px;
+  height: 100%;
   display: flex;
   align-items: center;
   position: relative;
@@ -526,14 +566,17 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  height: 20px;
+  justify-content: center;
+  height: 18px;
   padding: 0 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border: 1px solid currentColor;
   line-height: 1;
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 .badge.you {
   color: var(--color-contrast);
@@ -586,17 +629,40 @@
   color: var(--fg-2);
   flex-shrink: 0;
   overflow: hidden;
+  line-height: 1;
+  padding: 0;
 }
 .avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 .avatar.lg {
   width: 80px;
   height: 80px;
   font-size: 24px;
   border-color: var(--color-contrast);
+}
+.avatar.avatar-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 9px;
+  border-color: var(--color-contrast);
+}
+.avatar-upload {
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-base),
+    background var(--duration-fast) var(--ease-base);
+}
+.avatar-upload:hover:not(:disabled) {
+  border-color: var(--fg-2);
+  background: var(--color-gray-800);
+}
+.avatar-upload:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 /* ============================================================
@@ -631,12 +697,71 @@
   border: 1px solid var(--fg-4);
   padding: 0 12px;
   height: 36px;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-base);
+  text-decoration: none;
+  transition:
+    background var(--duration-fast) var(--ease-base),
+    border-color var(--duration-fast) var(--ease-base);
 }
 .user-chip:hover {
   background: var(--color-gray-800);
   border-color: var(--fg-2);
+}
+.user-chip-name {
+  color: var(--fg-2);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.player-identity {
+  min-width: 0;
+}
+
+.player-identity-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--fg-1);
+  line-height: 1.2;
+}
+
+.player-identity-sub {
+  color: var(--fg-3);
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.podium-player-row,
+.table-player-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.table-player-row .player-identity-name {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.dtable tr.my-row .player-identity-name {
+  font-weight: 600;
+}
+
+.profile-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.profile-name-edit:hover span:first-child {
+  color: var(--color-contrast);
 }
 
 /* ============================================================

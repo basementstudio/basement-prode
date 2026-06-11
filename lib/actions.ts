@@ -121,8 +121,10 @@ export async function getMyProfile() {
   }
 }
 
-export async function updateProfile(displayName: string) {
-  const userId = await getUserId()
+async function upsertProfile(
+  userId: string,
+  data: { displayName?: string; avatarUrl?: string },
+) {
   const existing = await db
     .select()
     .from(userProfiles)
@@ -132,14 +134,35 @@ export async function updateProfile(displayName: string) {
   if (existing.length > 0) {
     await db
       .update(userProfiles)
-      .set({ displayName, updatedAt: new Date() })
+      .set({ ...data, updatedAt: new Date() })
       .where(eq(userProfiles.userId, userId))
   } else {
     await db.insert(userProfiles).values({
       id: nanoid(),
       userId,
-      displayName,
+      ...data,
     })
   }
+}
+
+export async function updateProfile(displayName: string) {
+  const userId = await getUserId()
+  await upsertProfile(userId, { displayName })
   revalidatePath('/tabla')
+}
+
+export async function updateAvatar(avatarUrl: string) {
+  const userId = await getUserId()
+
+  if (!avatarUrl.startsWith('data:image/')) {
+    throw new Error('Imagen inválida')
+  }
+
+  if (avatarUrl.length > 700_000) {
+    throw new Error('La imagen es muy pesada')
+  }
+
+  await upsertProfile(userId, { avatarUrl })
+  revalidatePath('/tabla')
+  revalidatePath('/pronosticos')
 }

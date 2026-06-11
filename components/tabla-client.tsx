@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { updateProfile } from '@/lib/actions'
+import { useRef, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { updateProfile, updateAvatar } from '@/lib/actions'
+import { compressImageFile } from '@/lib/avatar-utils'
 
 interface Player {
   id: string
@@ -53,10 +55,30 @@ function Avatar({
   return (
     <div className={cls} aria-hidden="true">
       {url ? (
-        <img src={url} alt={name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+        <img src={url} alt={name} />
       ) : (
         initials(name)
       )}
+    </div>
+  )
+}
+
+function PlayerIdentity({
+  name,
+  subtitle,
+  isMe,
+}: {
+  name: string
+  subtitle: string
+  isMe: boolean
+}) {
+  return (
+    <div className="player-identity">
+      <div className="player-identity-name">
+        <span>{name}</span>
+        {isMe && <span className="badge you">VOS</span>}
+      </div>
+      <div className="mono-label player-identity-sub">{subtitle}</div>
     </div>
   )
 }
@@ -77,7 +99,7 @@ function PodiumCell({
 
   return (
     <div
-      className={`podium-cell`}
+      className="podium-cell"
       style={{
         flex: 1,
         borderTopColor: borderColor,
@@ -89,15 +111,13 @@ function PodiumCell({
         {prize.label} — {prize.desc.toUpperCase()}
       </div>
       {player ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="podium-player-row">
           <Avatar name={player.name} url={player.avatarUrl} />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '16px', color: 'var(--fg-1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {player.name}
-              {isMe && <span className="badge you">VOS</span>}
-            </div>
-            <div className="mono-label" style={{ color: 'var(--fg-3)' }}>{player.email}</div>
-          </div>
+          <PlayerIdentity
+            name={player.name}
+            subtitle={player.email}
+            isMe={isMe}
+          />
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
             <div style={{ fontSize: '24px', fontWeight: 700, color: borderColor, lineHeight: 1 }}>{player.points}</div>
             <div className="mono-label" style={{ color: 'var(--fg-3)' }}>PTS</div>
@@ -111,9 +131,14 @@ function PodiumCell({
 }
 
 export function TablaClient({ players, myProfile }: Props) {
+  const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(myProfile.displayName || myProfile.name)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(myProfile.avatarUrl)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isUploading, startUpload] = useTransition()
 
   const myRank = players.find(p => p.id === myProfile.userId)?.rank
   const myPoints = players.find(p => p.id === myProfile.userId)?.points ?? 0
@@ -123,15 +148,38 @@ export function TablaClient({ players, myProfile }: Props) {
       startTransition(async () => {
         await updateProfile(nameValue.trim())
         setEditingName(false)
+        router.refresh()
       })
     }
+  }
+
+  function handleAvatarSelect() {
+    setUploadError(null)
+    fileInputRef.current?.click()
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    startUpload(async () => {
+      try {
+        const dataUrl = await compressImageFile(file)
+        setAvatarPreview(dataUrl)
+        await updateAvatar(dataUrl)
+        router.refresh()
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'No se pudo subir la foto')
+        setAvatarPreview(myProfile.avatarUrl)
+      }
+    })
   }
 
   const top3 = [players[0], players[1], players[2]]
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px 80px' }}>
-      {/* Page header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
         <div>
           <div className="eyebrow" style={{ marginBottom: '8px' }}>
@@ -164,7 +212,6 @@ export function TablaClient({ players, myProfile }: Props) {
         </div>
       </div>
 
-      {/* Profile + podium cell */}
       <div className="cell" style={{ marginBottom: '32px', position: 'relative' }}>
         <span style={{ position:'absolute', top:'-3px', left:'-3px', width:'6px', height:'6px', background:'var(--fg-1)', zIndex:2 }} />
         <span style={{ position:'absolute', top:'-3px', right:'-3px', width:'6px', height:'6px', background:'var(--fg-1)', zIndex:2 }} />
@@ -172,19 +219,32 @@ export function TablaClient({ players, myProfile }: Props) {
         <span style={{ position:'absolute', bottom:'-3px', right:'-3px', width:'6px', height:'6px', background:'var(--fg-1)', zIndex:2 }} />
 
         <div style={{ display: 'flex', gap: '0', flexWrap: 'wrap' }}>
-          {/* My profile section */}
           <div style={{ flex: '0 0 280px', padding: '28px 28px', borderRight: '1px solid var(--fg-4)' }}>
             <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>— TU PERFIL</div>
 
-            <div className="avatar lg" style={{ marginBottom: '16px' }}>
-              {myProfile.avatarUrl ? (
-                <img src={myProfile.avatarUrl} alt={nameValue} />
+            <button
+              type="button"
+              className="avatar lg avatar-upload"
+              onClick={handleAvatarSelect}
+              disabled={isUploading}
+              aria-label="Subir foto de perfil"
+              style={{ marginBottom: '16px' }}
+            >
+              {avatarPreview ? (
+                <img src={avatarPreview} alt={nameValue} />
               ) : (
                 initials(nameValue)
               )}
-            </div>
+            </button>
 
-            {/* Editable name */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarChange}
+              hidden
+            />
+
             {editingName ? (
               <div style={{ display: 'flex', gap: '0', marginBottom: '8px' }}>
                 <input
@@ -205,14 +265,15 @@ export function TablaClient({ players, myProfile }: Props) {
                 </button>
               </div>
             ) : (
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: '8px' }}
+              <button
+                type="button"
+                className="profile-name-edit"
                 onClick={() => setEditingName(true)}
                 title="Clic para editar nombre"
               >
                 <span style={{ fontWeight: 600, fontSize: '18px', color: 'var(--fg-1)' }}>{nameValue}</span>
                 <span className="mono-label" style={{ color: 'var(--fg-4)', fontSize: '10px' }}>EDITAR</span>
-              </div>
+              </button>
             )}
 
             <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>
@@ -222,13 +283,19 @@ export function TablaClient({ players, myProfile }: Props) {
             <button
               className="btn"
               style={{ width: '100%', justifyContent: 'center', height: '32px' }}
-              onClick={() => alert('Subida de foto no disponible en esta versión.')}
+              onClick={handleAvatarSelect}
+              disabled={isUploading}
             >
-              Subir foto
+              {isUploading ? 'Subiendo…' : 'Subir foto'}
             </button>
+
+            {uploadError && (
+              <p className="mono-label" style={{ color: 'var(--color-contrast)', marginTop: '8px', fontSize: '10px' }}>
+                {uploadError}
+              </p>
+            )}
           </div>
 
-          {/* Points */}
           <div style={{ flex: 1, padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: '160px' }}>
             <div style={{ fontSize: '56px', fontWeight: 700, lineHeight: 1, color: 'var(--fg-1)', marginBottom: '4px' }}>
               {myPoints}
@@ -243,7 +310,6 @@ export function TablaClient({ players, myProfile }: Props) {
         </div>
       </div>
 
-      {/* Podium top 3 */}
       {players.length >= 1 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '12px' }}>
@@ -262,7 +328,6 @@ export function TablaClient({ players, myProfile }: Props) {
         </div>
       )}
 
-      {/* Full ranking table */}
       <div>
         <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '12px' }}>
           — RANKING COMPLETO
@@ -289,17 +354,13 @@ export function TablaClient({ players, myProfile }: Props) {
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className="table-player-row">
                         <Avatar name={player.name} url={player.avatarUrl} />
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontWeight: isMe ? 600 : 400 }}>{player.name}</span>
-                            {isMe && <span className="badge you">VOS</span>}
-                          </div>
-                          <div className="mono-label" style={{ color: 'var(--fg-4)', fontSize: '10px' }}>
-                            {player.email.split('@')[0]}
-                          </div>
-                        </div>
+                        <PlayerIdentity
+                          name={player.name}
+                          subtitle={player.email.split('@')[0]}
+                          isMe={isMe}
+                        />
                       </div>
                     </td>
                     <td>
