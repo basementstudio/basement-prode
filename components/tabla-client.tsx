@@ -70,9 +70,8 @@ function PodiumCell({
     <div
       className={cn('podium-cell', isMe && 'is-me')}
       style={{
-        flex: 1,
         ...(!isMe ? { borderTopColor: borderColor, borderTopWidth: '2px' } : {}),
-        minHeight: '160px',
+        minHeight: '120px',
       }}
     >
       <div className={`podium-rank ${colorClass} mono-label`} style={{ marginBottom: '12px' }}>
@@ -83,7 +82,7 @@ function PodiumCell({
           <UserAvatar name={player.name} imageUrl={player.avatarUrl} highlight={isMe} />
           <PlayerIdentity
             name={player.name}
-            subtitle={player.email}
+            subtitle={player.email.split('@')[0]}
           />
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
             <div style={{ fontSize: '24px', fontWeight: 700, color: borderColor, lineHeight: 1 }}>{player.points}</div>
@@ -146,8 +145,8 @@ export function TablaClient({ players, myProfile }: Props) {
   const top3 = [players[0], players[1], players[2]]
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px 80px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
+    <div className="tabla-page">
+      <div className="tabla-header">
         <div>
           <div className="eyebrow" style={{ marginBottom: '8px' }}>
             <span className="num">02</span>
@@ -163,18 +162,16 @@ export function TablaClient({ players, myProfile }: Props) {
             Ranking general del prode. El que termine 1° se lleva la merch de basement. Los puntos se suman a medida que se juegan los partidos.
           </p>
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '24px' }}>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--fg-1)', lineHeight: 1 }}>
-            {players.length}
+        <div className="tabla-header-stats">
+          <div className="tabla-stat-block">
+            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>JUGADORES</span>
+            <span className="tabla-stat-value">{players.length}</span>
           </div>
-          <div className="mono-label" style={{ color: 'var(--fg-3)', marginTop: '2px' }}>JUGADORES</div>
           {myRank && (
-            <>
-              <div className="mono-label" style={{ color: 'var(--fg-3)', marginTop: '8px' }}>TU PUESTO</div>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-contrast)', lineHeight: 1 }}>
-                {myRank}°
-              </div>
-            </>
+            <div className="tabla-stat-block">
+              <span className="mono-label" style={{ color: 'var(--fg-3)' }}>TU PUESTO</span>
+              <span className="tabla-stat-value-accent">{myRank}°</span>
+            </div>
           )}
         </div>
       </div>
@@ -185,8 +182,8 @@ export function TablaClient({ players, myProfile }: Props) {
         <span style={{ position:'absolute', bottom:'-3px', left:'-3px', width:'6px', height:'6px', background:'var(--fg-1)', zIndex:2 }} />
         <span style={{ position:'absolute', bottom:'-3px', right:'-3px', width:'6px', height:'6px', background:'var(--fg-1)', zIndex:2 }} />
 
-        <div style={{ display: 'flex', gap: '0', flexWrap: 'wrap' }}>
-          <div style={{ flex: '0 0 280px', padding: '28px 28px', borderRight: '1px solid var(--fg-4)' }}>
+        <div className={cn('tabla-profile-grid', !myRank && 'tabla-profile-grid-no-rank')}>
+          <div className="tabla-profile-info">
             <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>— TU PERFIL</div>
 
             <button
@@ -238,7 +235,7 @@ export function TablaClient({ players, myProfile }: Props) {
               </button>
             )}
 
-            <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>
+            <div className="mono-label profile-email" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>
               {myProfile.email}
             </div>
 
@@ -258,17 +255,16 @@ export function TablaClient({ players, myProfile }: Props) {
             )}
           </div>
 
-          <div style={{ flex: 1, padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: '160px' }}>
-            <div style={{ fontSize: '56px', fontWeight: 700, lineHeight: 1, color: 'var(--fg-1)', marginBottom: '4px' }}>
-              {myPoints}
-            </div>
-            <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>PUNTOS</div>
-            {myRank && (
-              <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--color-contrast)', lineHeight: 1 }}>
-                {myRank}°
-              </div>
-            )}
+          <div className="tabla-profile-stat">
+            <span className="tabla-profile-stat-value">{myPoints}</span>
+            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>PUNTOS</span>
           </div>
+          {myRank && (
+            <div className="tabla-profile-stat">
+              <span className="tabla-profile-stat-value-accent">{myRank}°</span>
+              <span className="mono-label" style={{ color: 'var(--fg-3)' }}>PUESTO</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -277,7 +273,7 @@ export function TablaClient({ players, myProfile }: Props) {
           <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '12px' }}>
             — PODIO
           </div>
-          <div style={{ display: 'flex', gap: '0' }}>
+          <div className="tabla-podium-grid">
             {[1, 2, 3].map(rank => (
               <PodiumCell
                 key={rank}
@@ -294,7 +290,7 @@ export function TablaClient({ players, myProfile }: Props) {
         <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '12px' }}>
           — RANKING COMPLETO
         </div>
-        <div className="cell">
+        <div className="cell tabla-table-wrap">
           <table className="dtable">
             <thead>
               <tr>

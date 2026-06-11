@@ -117,11 +117,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
     if (initializedRef.current) return
     initializedRef.current = true
     setActiveMatchId(firstEditableMatchId(sortedMatches, now))
-    const firstGroup = groupsUpcoming.findIndex(g =>
-      g.matches.some(m => !predictions[m.id]),
-    )
-    if (firstGroup >= 0) setCurrentGroupIndex(firstGroup)
-  }, [sortedMatches, groupsUpcoming, predictions, now])
+  }, [sortedMatches, now])
 
   useEffect(() => {
     if (viewMode === 'todos') {
@@ -139,17 +135,14 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
     prevViewModeRef.current = viewMode
     if (!enteringPorGrupo) return
 
-    const firstGroup = groupsUpcoming.findIndex(g =>
-      g.matches.some(m => !predictionsRef.current[m.id]),
-    )
-    const groupIndex = firstGroup >= 0 ? firstGroup : 0
-    const group = groupsUpcoming[groupIndex]
-    setCurrentGroupIndex(groupIndex)
+    setCurrentGroupIndex(0)
+    const group = groupsUpcoming[0]
     if (group) {
       setActiveGroupMatchIndex(
         firstUnsavedIndexInGroup(group.matches, predictionsRef.current),
       )
     }
+    carouselApiRef.current?.scrollTo(0, false)
   }, [viewMode, groupsUpcoming])
 
   const handleGroupIndexChange = useCallback((index: number) => {

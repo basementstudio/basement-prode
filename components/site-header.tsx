@@ -174,16 +174,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
           </div>
         )}
 
-        <div className="flex shrink-0 items-center gap-2 lg:hidden">
-          {session?.user && (
-            <Link
-              href="/tabla"
-              className="flex size-9 items-center justify-center border border-border no-underline transition-colors duration-200 ease-base hover:border-fg-2 hover:bg-gray-800"
-              aria-label="Ir a tu perfil"
-            >
-              <UserAvatar name={userName} imageUrl={avatarUrl} size="sm" />
-            </Link>
-          )}
+        <div className="flex shrink-0 items-center lg:hidden">
           <Button
             variant="outline"
             onClick={() => setMenuOpen(open => !open)}

@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures'
 import {
   Carousel,
   CarouselContent,
@@ -44,7 +45,9 @@ export function GroupMatchesCarousel({
 }: GroupMatchesCarouselProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const groupTabsRef = useRef<HTMLElement>(null)
-  const syncingFromUserRef = useRef(false)
+  const syncingFromParentRef = useRef(false)
+
+  const wheelPlugins = useMemo(() => [WheelGesturesPlugin()], [])
 
   useEffect(() => {
     if (!carouselApi) return
@@ -55,7 +58,7 @@ export function GroupMatchesCarousel({
     if (!carouselApi) return
 
     const onSelect = () => {
-      if (syncingFromUserRef.current) return
+      if (syncingFromParentRef.current) return
       onGroupIndexChange(carouselApi.selectedScrollSnap())
     }
 
@@ -70,11 +73,11 @@ export function GroupMatchesCarousel({
     if (!carouselApi) return
     if (carouselApi.selectedScrollSnap() === currentGroupIndex) return
 
-    syncingFromUserRef.current = true
+    syncingFromParentRef.current = true
     carouselApi.scrollTo(currentGroupIndex, false)
-    requestAnimationFrame(() => {
-      syncingFromUserRef.current = false
-    })
+    window.setTimeout(() => {
+      syncingFromParentRef.current = false
+    }, 0)
   }, [carouselApi, currentGroupIndex])
 
   const scrollGroupTabIntoView = useCallback((index: number) => {
@@ -112,6 +115,7 @@ export function GroupMatchesCarousel({
       <Carousel
         setApi={setCarouselApi}
         opts={{ align: 'start', loop: false, containScroll: 'trimSnaps', watchDrag: true }}
+        plugins={wheelPlugins}
         className="group-carousel-viewport"
       >
         <CarouselContent className="group-carousel-track ml-0">

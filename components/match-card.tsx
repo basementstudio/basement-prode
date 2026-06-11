@@ -160,12 +160,11 @@ export function MatchCard({
   const savedCallbackRef = useRef(onSaved)
   const homeEditedRef = useRef(false)
   const awayEditedRef = useRef(false)
-  const awayTouchedRef = useRef(false)
+  const awayConfirmedRef = useRef(false)
   const committingRef = useRef(false)
   const prevFocusedRef = useRef(focused)
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const focusAwayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const partialSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   savedCallbackRef.current = onSaved
 
   const markHomeEdited = useCallback(() => {
@@ -178,12 +177,9 @@ export function MatchCard({
     setEditEpoch(n => n + 1)
   }, [])
 
-  const markAwayTouched = useCallback(() => {
-    awayTouchedRef.current = true
-    if (partialSaveTimerRef.current) {
-      clearTimeout(partialSaveTimerRef.current)
-      partialSaveTimerRef.current = null
-    }
+  const markAwayConfirmed = useCallback(() => {
+    awayConfirmedRef.current = true
+    setEditEpoch(n => n + 1)
   }, [])
 
   useEffect(() => {
@@ -193,7 +189,7 @@ export function MatchCard({
     if (!focused) {
       homeEditedRef.current = false
       awayEditedRef.current = false
-      awayTouchedRef.current = false
+      awayConfirmedRef.current = false
     }
   }, [prediction?.home, prediction?.away, prediction, match.id, focused])
 
@@ -204,7 +200,7 @@ export function MatchCard({
     if (focused && !locked && !wasFocused) {
       homeEditedRef.current = false
       awayEditedRef.current = false
-      awayTouchedRef.current = false
+      awayConfirmedRef.current = false
     }
 
     if (wasFocused && !focused && !locked) {
@@ -248,37 +244,62 @@ export function MatchCard({
     }
   }
 
-  function readyToCommit() {
+  type CommitPhase = 'idle' | 'need-away' | 'ready'
+
+  function getCommitPhase(): CommitPhase {
+    if (!homeEditedRef.current && !awayEditedRef.current) return 'idle'
+
     const predHome = prediction?.home ?? 0
     const predAway = prediction?.away ?? 0
     const homeChanged = homeScore !== predHome
     const awayChanged = awayScore !== predAway
 
     if (!prediction) {
-      return homeEditedRef.current && awayEditedRef.current
+      if (homeEditedRef.current && awayEditedRef.current) return 'ready'
+      if (homeEditedRef.current) return 'need-away'
+      return 'idle'
     }
 
     if (!homeChanged && !awayChanged) {
-      return homeEditedRef.current && awayEditedRef.current
+      return homeEditedRef.current && awayEditedRef.current ? 'ready' : 'idle'
     }
+
     if (!homeChanged && awayChanged) {
-      return awayEditedRef.current
+      return awayEditedRef.current ? 'ready' : 'idle'
     }
+
     if (homeChanged && !awayChanged) {
-      return homeEditedRef.current
+      if (!homeEditedRef.current) return 'idle'
+      return awayConfirmedRef.current || awayEditedRef.current ? 'ready' : 'need-away'
     }
-    return homeEditedRef.current && awayEditedRef.current
+
+    if (homeEditedRef.current && awayEditedRef.current) return 'ready'
+    if (homeEditedRef.current && !awayEditedRef.current) return 'need-away'
+    if (!homeEditedRef.current && awayEditedRef.current) return 'ready'
+    return 'idle'
   }
 
-  function canAutoConfirmAwayAfterHomeEdit() {
-    if (!prediction || !homeEditedRef.current || awayEditedRef.current || awayTouchedRef.current) {
-      return false
+  function confirmAwayIfUnchanged() {
+    if (!prediction) return
+    const awayChanged = awayScore !== prediction.away
+    if (!awayChanged && homeEditedRef.current && !awayEditedRef.current) {
+      markAwayConfirmed()
     }
-    return homeScore !== prediction.home && awayScore === prediction.away
+  }
+
+  function handleAwayComplete() {
+    if (saveWhenComplete) {
+      confirmAwayIfUnchanged()
+      if (getCommitPhase() === 'ready') {
+        void commitSave()
+      }
+      return
+    }
+    void commitSave()
   }
 
   async function commitSave() {
-    if (locked || saving || committingRef.current || !readyToCommit()) return
+    if (locked || saving || committingRef.current || getCommitPhase() !== 'ready') return
 
     committingRef.current = true
     try {
@@ -286,7 +307,9 @@ export function MatchCard({
         homeScore === (prediction?.home ?? 0) && awayScore === (prediction?.away ?? 0)
 
       if (unchanged) {
-        queueMicrotask(() => savedCallbackRef.current?.())
+        if (prediction) {
+          queueMicrotask(() => savedCallbackRef.current?.())
+        }
         return
       }
 
@@ -298,37 +321,29 @@ export function MatchCard({
 
   useEffect(() => () => {
     if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
-    if (partialSaveTimerRef.current) clearTimeout(partialSaveTimerRef.current)
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
   }, [])
 
   useEffect(() => {
     if (locked || saving || !saveWhenComplete || !focused) return
-    if (!homeEditedRef.current || awayEditedRef.current) return
+    if (getCommitPhase() !== 'need-away') return
 
     if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
     focusAwayTimerRef.current = setTimeout(() => {
       awayRef.current?.focus({ preventScroll: true })
       awayRef.current?.select()
-      if (partialSaveTimerRef.current) clearTimeout(partialSaveTimerRef.current)
-      partialSaveTimerRef.current = setTimeout(() => {
-        if (!canAutoConfirmAwayAfterHomeEdit()) return
-        void commitSave()
-      }, INPUT_PAUSE_MS)
     }, INPUT_PAUSE_MS)
 
     return () => {
       if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
-      if (partialSaveTimerRef.current) clearTimeout(partialSaveTimerRef.current)
     }
-  }, [homeScore, locked, saving, saveWhenComplete, focused, editEpoch])
+  }, [homeScore, awayScore, locked, saving, saveWhenComplete, focused, editEpoch])
 
   useEffect(() => {
     if (locked || saving) return
 
     if (saveWhenComplete) {
-      if (!readyToCommit()) return
-      if (canAutoConfirmAwayAfterHomeEdit()) return
+      if (getCommitPhase() !== 'ready') return
       if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
 
       autoSaveRef.current = setTimeout(() => {
@@ -430,9 +445,8 @@ export function MatchCard({
                 aria-label={`Goles ${match.away.name}`}
                 onActivate={onActivate}
                 onEdited={markAwayEdited}
-                onInteraction={markAwayTouched}
-                onTabNext={() => { void commitSave() }}
-                onBlurComplete={saveWhenComplete ? undefined : () => { void commitSave() }}
+                onTabNext={handleAwayComplete}
+                onBlurComplete={handleAwayComplete}
               />
             )}
           </div>
@@ -497,9 +511,8 @@ export function MatchCard({
                 aria-label={`Goles ${match.away.name}`}
                 onActivate={onActivate}
                 onEdited={markAwayEdited}
-                onInteraction={markAwayTouched}
-                onTabNext={() => { void commitSave() }}
-                onBlurComplete={saveWhenComplete ? undefined : () => { void commitSave() }}
+                onTabNext={handleAwayComplete}
+                onBlurComplete={handleAwayComplete}
               />
               </div>
             )}

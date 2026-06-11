@@ -1042,10 +1042,187 @@
 
 /* ---- Podio / jugadores ---- */
 
+@utility tabla-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+
+  @media (min-width: 640px) {
+    padding: 32px 24px 80px;
+  }
+}
+
+@utility tabla-header {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 32px;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+  }
+}
+
+@utility tabla-header-stats {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  flex-shrink: 0;
+
+  @media (min-width: 640px) {
+    gap: 32px;
+  }
+}
+
+@utility tabla-stat-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 72px;
+}
+
+@utility tabla-stat-value {
+  font-size: clamp(28px, 5vw, 36px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fg-1);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility tabla-stat-value-accent {
+  font-size: clamp(28px, 5vw, 36px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-contrast);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility tabla-profile-grid {
+  display: flex;
+  flex-direction: column;
+
+  @media (min-width: 640px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@utility tabla-profile-grid-no-rank {
+  @media (min-width: 640px) {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  }
+}
+
+@utility tabla-profile-info {
+  padding: 20px 16px;
+  border-bottom: 1px solid var(--fg-4);
+
+  @media (min-width: 640px) {
+    padding: 24px 28px;
+    border-bottom: none;
+    border-right: 1px solid var(--fg-4);
+  }
+}
+
+@utility tabla-profile-stat {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  border-bottom: 1px solid var(--fg-4);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  @media (min-width: 640px) {
+    padding: 24px 20px;
+    border-bottom: none;
+    border-right: 1px solid var(--fg-4);
+
+    &:last-child {
+      border-right: none;
+    }
+  }
+}
+
+@utility tabla-profile-stat-value {
+  font-size: clamp(40px, 10vw, 52px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fg-1);
+}
+
+@utility tabla-profile-stat-value-accent {
+  font-size: clamp(32px, 8vw, 44px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-contrast);
+}
+
+@utility profile-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+@utility tabla-podium-grid {
+  display: flex;
+  flex-direction: column;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+  }
+}
+
+@utility tabla-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  & .dtable th:nth-child(3),
+  & .dtable td:nth-child(3) {
+    @media (max-width: 480px) {
+      display: none;
+    }
+  }
+
+  & .dtable th,
+  & .dtable td {
+    @media (max-width: 639px) {
+      padding: 10px 12px;
+    }
+  }
+}
+
 @utility podium-cell {
   border: 1px solid var(--fg-4);
-  padding: 24px;
+  padding: 16px;
   position: relative;
+  width: 100%;
+
+  @media (min-width: 640px) {
+    flex: 1;
+    padding: 24px;
+    width: auto;
+
+    &:not(:last-child) {
+      border-right: none;
+    }
+  }
+
+  @media (max-width: 639px) {
+    &:not(:first-child) {
+      border-top: none;
+    }
+  }
 
   &.is-me {
     border-color: var(--color-contrast);
@@ -1105,12 +1282,21 @@
   color: var(--fg-3);
   margin-top: 4px;
   font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @utility podium-player-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+
+  & .player-identity {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 @utility table-player-row {
