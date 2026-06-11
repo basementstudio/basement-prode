@@ -3,8 +3,8 @@
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
+import { allowedLoginEmailError, isAllowedLoginEmail } from '@/lib/auth-allowed-email'
 
-const ALLOWED_DOMAIN = 'basement.studio'
 const OTP_LENGTH = 6
 
 type Step = 'email' | 'otp'
@@ -25,9 +25,8 @@ export function LoginForm() {
     e.preventDefault()
     setError('')
 
-    const domain = email.split('@')[1]?.toLowerCase()
-    if (domain !== ALLOWED_DOMAIN) {
-      setError(`Solo se aceptan mails @${ALLOWED_DOMAIN}.`)
+    if (!isAllowedLoginEmail(email)) {
+      setError(allowedLoginEmailError())
       return
     }
 

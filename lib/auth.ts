@@ -1,8 +1,10 @@
 import { betterAuth } from 'better-auth'
 import { emailOTP } from 'better-auth/plugins'
 import { pool } from '@/lib/db'
+import { sendOtpEmail } from '@/lib/email/send-otp-email'
 
 export const auth = betterAuth({
+  secret: process.env.BETTER_AUTH_SECRET,
   database: pool,
   baseURL:
     process.env.BETTER_AUTH_URL ??
@@ -14,9 +16,9 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
-        // In production this would send an actual email.
-        // For now we log so you can grab it from the console.
-        console.log(`[auth] OTP for ${email} (${type}): ${otp}`)
+        void sendOtpEmail({ email, otp, type }).catch((err) => {
+          console.error('[auth] Error al enviar OTP por email:', err)
+        })
       },
       otpLength: 6,
       expiresIn: 600,
