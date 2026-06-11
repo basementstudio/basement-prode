@@ -522,6 +522,14 @@
 }
 .dtable tr.my-row td {
   color: var(--fg-1);
+  border-color: var(--color-contrast);
+  background: rgba(255, 77, 0, 0.04);
+}
+.dtable tr.my-row .avatar {
+  border-color: var(--color-contrast);
+}
+.dtable tr.my-row:hover td {
+  background: rgba(255, 77, 0, 0.08);
 }
 .dtable tr:hover td {
   background: var(--color-gray-800);
@@ -672,6 +680,15 @@
   border: 1px solid var(--fg-4);
   padding: 24px;
   position: relative;
+}
+.podium-cell.is-me {
+  border-color: var(--color-contrast);
+  border-width: 1px;
+  border-top-width: 2px;
+  background: rgba(255, 77, 0, 0.04);
+}
+.podium-cell.is-me .avatar {
+  border-color: var(--color-contrast);
 }
 .podium-cell.gold   { border-top-color: #FFD700; }
 .podium-cell.silver { border-top-color: #C0C0C0; }

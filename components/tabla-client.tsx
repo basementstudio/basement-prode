@@ -66,17 +66,14 @@ function Avatar({
 function PlayerIdentity({
   name,
   subtitle,
-  isMe,
 }: {
   name: string
   subtitle: string
-  isMe: boolean
 }) {
   return (
     <div className="player-identity">
       <div className="player-identity-name">
         <span>{name}</span>
-        {isMe && <span className="badge you">VOS</span>}
       </div>
       <div className="mono-label player-identity-sub">{subtitle}</div>
     </div>
@@ -99,11 +96,10 @@ function PodiumCell({
 
   return (
     <div
-      className="podium-cell"
+      className={`podium-cell${isMe ? ' is-me' : ''}`}
       style={{
         flex: 1,
-        borderTopColor: borderColor,
-        borderTopWidth: '2px',
+        ...(!isMe ? { borderTopColor: borderColor, borderTopWidth: '2px' } : {}),
         minHeight: '160px',
       }}
     >
@@ -116,7 +112,6 @@ function PodiumCell({
           <PlayerIdentity
             name={player.name}
             subtitle={player.email}
-            isMe={isMe}
           />
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
             <div style={{ fontSize: '24px', fontWeight: 700, color: borderColor, lineHeight: 1 }}>{player.points}</div>
@@ -359,7 +354,6 @@ export function TablaClient({ players, myProfile }: Props) {
                         <PlayerIdentity
                           name={player.name}
                           subtitle={player.email.split('@')[0]}
-                          isMe={isMe}
                         />
                       </div>
                     </td>
