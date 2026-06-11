@@ -63,6 +63,7 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: clip;
     background-color: var(--color-primary);
     color: var(--fg-1);
     font-family: var(--font-sans);
@@ -74,12 +75,25 @@
       linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
     background-size: var(--grid-size) var(--grid-size);
     background-attachment: fixed;
+    -webkit-overflow-scrolling: touch;
   }
 
   body {
     min-height: 100dvh;
+    overflow-x: clip;
     background-color: transparent;
     color: var(--fg-1);
+  }
+
+  @media (max-width: 1023px) {
+    html {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    html::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   *:focus-visible {
@@ -511,6 +525,254 @@
   }
 }
 
+@utility match-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--fg-4);
+}
+
+@utility match-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+
+@utility match-card-meta-sep {
+  color: var(--fg-4);
+}
+
+@utility match-card-meta-venue {
+  color: var(--fg-4);
+
+  @media (max-width: 640px) {
+    display: none;
+  }
+}
+
+@utility match-card-body-desktop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+}
+
+@utility match-card-body-mobile {
+  display: flex;
+  flex-direction: column;
+}
+
+@utility match-card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--fg-4);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+@utility match-card-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+@utility match-card-team-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--fg-1);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@utility match-card-team-name--desktop {
+  font-size: 15px;
+  line-height: 1.25;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+@utility match-card-team-code {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+}
+
+@utility match-card-team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+@utility match-card-team--home {
+  justify-content: flex-end;
+}
+
+@utility match-card-team--away {
+  justify-content: flex-start;
+}
+
+@utility match-card-team-info {
+  min-width: 0;
+}
+
+@utility match-card-team-info--home {
+  text-align: right;
+}
+
+@utility match-card-scores {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+}
+
+@utility match-card-score-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@utility match-card-score-sep {
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--fg-4);
+}
+
+@utility score-input-inline {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  font-size: 22px;
+}
+
+@utility match-card-score-value {
+  flex-shrink: 0;
+  min-width: 44px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  color: var(--fg-1);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility match-card-mobile-footer {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--fg-4);
+  text-align: center;
+}
+
+@utility view-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 32px;
+  border: 1px solid var(--fg-4);
+}
+
+@utility view-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  border: none;
+  border-right: 1px solid var(--fg-4);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-base),
+    color var(--duration-fast) var(--ease-base);
+  user-select: none;
+
+  &:last-child {
+    border-right: none;
+  }
+
+  &:hover {
+    background: var(--color-gray-800);
+    color: var(--fg-1);
+  }
+
+  &.active {
+    background: var(--color-gray-800);
+    color: var(--fg-1);
+  }
+
+  &.active .view-mode-tab-count {
+    color: var(--fg-2);
+  }
+}
+
+@utility view-mode-tab-count {
+  color: var(--fg-3);
+  font-size: 10px;
+}
+
+@utility page-shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+
+  @media (min-width: 640px) {
+    padding: 32px 24px 80px;
+  }
+}
+
+@utility page-shell-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 8px;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+}
+
+@utility page-shell-intro {
+  flex: 1;
+  min-width: 0;
+}
+
+@utility page-shell-stat {
+  flex-shrink: 0;
+  text-align: left;
+
+  @media (min-width: 640px) {
+    text-align: right;
+    margin-left: 24px;
+  }
+}
+
 /* ---- Tabla ---- */
 
 @utility dtable {
@@ -757,6 +1019,16 @@
 
 /* ---- Scroll / animación ---- */
 
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility scroll-target {
   scroll-margin-top: 80px;
 }
@@ -769,21 +1041,38 @@
 
 @utility aciertos-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   margin-bottom: 32px;
   border: 1px solid var(--fg-4);
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
 }
 
 @utility aciertos-stat {
   padding: 20px 16px;
   border-right: 1px solid var(--fg-4);
+  border-bottom: 1px solid var(--fg-4);
   display: flex;
   flex-direction: column;
   gap: 4px;
 
-  &:last-child {
+  &:nth-child(2n) {
     border-right: none;
+  }
+
+  @media (min-width: 640px) {
+    border-bottom: none;
+
+    &:nth-child(2n) {
+      border-right: 1px solid var(--fg-4);
+    }
+
+    &:last-child {
+      border-right: none;
+    }
   }
 
   &.aciertos-stat--primary .aciertos-stat-value {

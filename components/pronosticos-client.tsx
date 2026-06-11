@@ -141,15 +141,33 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
     const firstGroup = groupsUpcoming.findIndex(g =>
       g.matches.some(m => !predictionsRef.current[m.id]),
     )
-    setCurrentGroupIndex(firstGroup >= 0 ? firstGroup : 0)
+    const groupIndex = firstGroup >= 0 ? firstGroup : 0
+    const group = groupsUpcoming[groupIndex]
+    setCurrentGroupIndex(groupIndex)
+    if (group) {
+      setActiveGroupMatchIndex(
+        firstUnsavedIndexInGroup(group.matches, predictionsRef.current),
+      )
+    }
   }, [viewMode, groupsUpcoming])
 
-  useEffect(() => {
-    const group = groupsUpcomingRef.current[currentGroupIndex]
+  const handleGroupIndexChange = useCallback((index: number) => {
+    setCurrentGroupIndex(index)
+    const group = groupsUpcomingRef.current[index]
     if (!group) return
-    setActiveGroupMatchIndex(
-      firstUnsavedIndexInGroup(group.matches, predictionsRef.current),
-    )
+    const matchIndex = firstUnsavedIndexInGroup(group.matches, predictionsRef.current)
+    setActiveGroupMatchIndex(matchIndex)
+    const match = group.matches[matchIndex]
+    if (match) bumpFocus(match.id)
+  }, [bumpFocus])
+
+  const handleGroupMatchActivate = useCallback((groupIndex: number, matchIndex: number) => {
+    if (groupIndex !== currentGroupIndex) {
+      setCurrentGroupIndex(groupIndex)
+      carouselApiRef.current?.scrollTo(groupIndex)
+    }
+    setActiveGroupMatchIndex(matchIndex)
+    setFocusToken(t => t + 1)
   }, [currentGroupIndex])
 
   useEffect(() => () => {
@@ -216,9 +234,9 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
   ]
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px 80px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <div style={{ flex: 1 }}>
+    <div className="page-shell">
+      <div className="page-shell-hero">
+        <div className="page-shell-intro">
           <div className="eyebrow" style={{ marginBottom: '8px' }}>
             <span className="num">01</span>
             <span className="sep"> — </span>
@@ -237,7 +255,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
             Local → visitante → siguiente partido, al instante. En Por grupo, al terminar el último partido pasás al siguiente grupo. Horarios en {tzLabel}.
           </p>
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '24px' }}>
+        <div className="page-shell-stat">
           <div style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1 }}>
             {savedCount}
             <span style={{ fontSize: '16px', color: 'var(--fg-3)', fontWeight: 400 }}> / {upcoming.length}</span>
@@ -260,15 +278,16 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
         </span>
       </div>
 
-      <div style={{ display: 'flex', gap: '0', marginBottom: '32px', flexWrap: 'wrap' }}>
+      <div className="view-mode-tabs">
         {viewOptions.map(({ key, label, count }) => (
           <button
             key={key}
-            className={`chip${viewMode === key ? ' active' : ''}`}
-            style={{ marginRight: '-1px', marginBottom: '-1px' }}
+            type="button"
+            className={`view-mode-tab${viewMode === key ? ' active' : ''}`}
             onClick={() => setViewMode(key)}
           >
-            {label} <span className="chip-count">{count}</span>
+            {label}
+            <span className="view-mode-tab-count">{count}</span>
           </button>
         ))}
       </div>
@@ -293,6 +312,11 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
                   highlighted={isActive}
                   focusToken={isActive ? focusToken : 0}
                   saveWhenComplete={editable && isActive}
+                  onActivate={() => {
+                    if (!editable) return
+                    setActiveMatchId(match.id)
+                    setFocusToken(t => t + 1)
+                  }}
                   onSaved={() => handleTodosMatchComplete(match.id)}
                 />
               )
@@ -308,7 +332,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
           <GroupMatchesCarousel
             groups={groupsUpcoming}
             currentGroupIndex={currentGroupIndex}
-            onGroupIndexChange={setCurrentGroupIndex}
+            onGroupIndexChange={handleGroupIndexChange}
             activeGroupMatchIndex={activeGroupMatchIndex}
             focusToken={focusToken}
             predictions={predictions}
@@ -316,6 +340,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
             now={now}
             userTz={userTz}
             onGroupMatchComplete={handleGroupMatchComplete}
+            onGroupMatchActivate={handleGroupMatchActivate}
             onApiReady={handleCarouselApiReady}
           />
         )

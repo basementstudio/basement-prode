@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import {
   getMatchDisplayScore,
   getMatchStatus,
@@ -15,6 +15,7 @@ import {
 } from '@/lib/wc2026/format-local'
 import { calcPoints, scoreLabel } from '@/lib/scoring'
 import { INPUT_PAUSE_MS } from '@/lib/prediction-flow'
+import { useIsMobile } from '@/lib/use-mobile'
 import { ScoreInput } from '@/components/score-input'
 import { FlagStripes } from '@/components/flag-stripes'
 
@@ -45,6 +46,76 @@ function MatchStatusBadge({
   return <span className="mono-label badge badge-upcoming">POR JUGAR</span>
 }
 
+function LockedScores({
+  status,
+  concluded,
+  displayScore,
+  hasPred,
+  prediction,
+  points,
+  elapsed,
+  compact = false,
+}: {
+  status: MatchStatus
+  concluded: boolean
+  displayScore: { home: number; away: number } | null | undefined
+  hasPred: boolean
+  prediction?: { home: number; away: number }
+  points: number | null
+  elapsed?: number | null
+  compact?: boolean
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: compact ? '6px' : '8px',
+      }}
+    >
+      {!compact && displayScore ? (
+        <div className="match-card-score-row">
+          <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>{displayScore.home}</span>
+          <span className="match-card-score-sep">:</span>
+          <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>{displayScore.away}</span>
+        </div>
+      ) : !compact && status === 'live' ? (
+        <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
+          Partido en curso{elapsed != null ? ` · ${elapsed}'` : ''}
+        </span>
+      ) : !compact && concluded ? (
+        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Resultado pendiente</span>
+      ) : !compact ? (
+        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Pronósticos cerrados</span>
+      ) : null}
+
+      {compact && status === 'live' && (
+        <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
+          Partido en curso{elapsed != null ? ` · ${elapsed}'` : ''}
+        </span>
+      )}
+
+      {hasPred && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
+            Tu pronóstico: {prediction!.home}:{prediction!.away}
+          </span>
+          {points !== null && (
+            <span className={`badge ${points === 6 ? 'exact' : points === 3 ? 'winner' : 'pts'}`}>
+              {scoreLabel(points)}
+            </span>
+          )}
+        </div>
+      )}
+
+      {!hasPred && concluded && (
+        <span className="mono-label" style={{ color: 'var(--fg-4)' }}>Sin pronóstico</span>
+      )}
+    </div>
+  )
+}
+
 export interface MatchCardProps {
   match: Match
   prediction?: { home: number; away: number }
@@ -55,6 +126,7 @@ export interface MatchCardProps {
   focused?: boolean
   /** Incrementar para forzar foco al input local (p. ej. al avanzar de partido). */
   focusToken?: number
+  onActivate?: () => void
   onSaved?: () => void
   /** Guarda y notifica solo cuando el usuario editó local y visitante. */
   saveWhenComplete?: boolean
@@ -69,9 +141,11 @@ export function MatchCard({
   highlighted = false,
   focused = false,
   focusToken = 0,
+  onActivate,
   onSaved,
   saveWhenComplete = false,
 }: MatchCardProps) {
+  const isMobile = useIsMobile()
   const status = getMatchStatus(match, now)
   const locked = isMatchLocked(match, now)
   const concluded = status === 'finished'
@@ -79,38 +153,65 @@ export function MatchCard({
   const [awayScore, setAwayScore] = useState(prediction?.away ?? 0)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(!!prediction)
+  const [editEpoch, setEditEpoch] = useState(0)
   const homeRef = useRef<HTMLInputElement>(null)
   const awayRef = useRef<HTMLInputElement>(null)
   const savedCallbackRef = useRef(onSaved)
   const homeEditedRef = useRef(false)
   const awayEditedRef = useRef(false)
   const committingRef = useRef(false)
+  const prevFocusedRef = useRef(focused)
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const focusAwayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   savedCallbackRef.current = onSaved
+
+  const markHomeEdited = useCallback(() => {
+    homeEditedRef.current = true
+    setEditEpoch(n => n + 1)
+  }, [])
+
+  const markAwayEdited = useCallback(() => {
+    awayEditedRef.current = true
+    setEditEpoch(n => n + 1)
+  }, [])
 
   useEffect(() => {
     setHomeScore(prediction?.home ?? 0)
     setAwayScore(prediction?.away ?? 0)
     setSaved(!!prediction)
-    homeEditedRef.current = false
-    awayEditedRef.current = false
-  }, [prediction?.home, prediction?.away, prediction, match.id])
+    if (!focused) {
+      homeEditedRef.current = false
+      awayEditedRef.current = false
+    }
+  }, [prediction?.home, prediction?.away, prediction, match.id, focused])
+
+  useEffect(() => {
+    const wasFocused = prevFocusedRef.current
+    prevFocusedRef.current = focused
+
+    if (focused && !locked && !wasFocused) {
+      homeEditedRef.current = false
+      awayEditedRef.current = false
+    }
+
+    if (wasFocused && !focused && !locked) {
+      const active = document.activeElement
+      if (active === homeRef.current || active === awayRef.current) {
+        ;(active as HTMLElement).blur()
+      }
+    }
+  }, [focused, locked])
 
   useLayoutEffect(() => {
     if (!focused || locked) return
+    const active = document.activeElement
+    if (active === homeRef.current || active === awayRef.current) return
     const frame = requestAnimationFrame(() => {
       homeRef.current?.focus()
       homeRef.current?.select()
     })
     return () => cancelAnimationFrame(frame)
   }, [focused, locked, match.id, focusToken])
-
-  useEffect(() => {
-    if (focused || locked) return
-    const active = document.activeElement
-    if (active === homeRef.current || active === awayRef.current) {
-      ;(active as HTMLElement).blur()
-    }
-  }, [focused, locked])
 
   const hasPred = !!prediction
   const displayScore = getMatchDisplayScore(match, status)
@@ -157,25 +258,25 @@ export function MatchCard({
     }
   }
 
-  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const focusAwayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
+  }, [])
 
   useEffect(() => {
-    if (locked || saving) return
-    if (!homeEditedRef.current) return
+    if (locked || saving || !saveWhenComplete || !focused) return
+    if (!homeEditedRef.current || awayEditedRef.current) return
 
     if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
     focusAwayTimerRef.current = setTimeout(() => {
-      const active = document.activeElement
-      if (active === homeRef.current) {
-        awayRef.current?.focus()
-      }
+      awayRef.current?.focus()
+      awayRef.current?.select()
     }, INPUT_PAUSE_MS)
 
     return () => {
       if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
     }
-  }, [homeScore, locked, saving])
+  }, [homeScore, locked, saving, saveWhenComplete, focused, editEpoch])
 
   useEffect(() => {
     if (locked || saving) return
@@ -202,7 +303,7 @@ export function MatchCard({
     return () => {
       if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
     }
-  }, [homeScore, awayScore, locked, saving, prediction?.home, prediction?.away, saveWhenComplete, focused])
+  }, [homeScore, awayScore, locked, saving, prediction?.home, prediction?.away, saveWhenComplete, focused, editEpoch])
 
   const cardClass = [
     'match-card scroll-target',
@@ -215,105 +316,156 @@ export function MatchCard({
 
   return (
     <div id={`match-${match.id}`} className={cardClass} style={{ marginBottom: '-1px' }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '8px 16px',
-        borderBottom: '1px solid var(--fg-4)',
-        background: concluded ? 'rgba(235,235,235,0.02)' : status === 'live' ? 'rgba(255,77,0,0.03)' : 'transparent',
-      }}>
-        <div className="mono-label" style={{ color: 'var(--fg-3)', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div
+        className="match-card-header"
+        style={{
+          background: concluded ? 'rgba(235,235,235,0.02)' : status === 'live' ? 'rgba(255,77,0,0.03)' : 'transparent',
+        }}
+      >
+        <div className="match-card-meta">
           <span>GRUPO {match.group}</span>
-          <span style={{ color: 'var(--fg-4)' }}>·</span>
+          <span className="match-card-meta-sep">·</span>
           <span>{dateLabel}</span>
-          <span style={{ color: 'var(--fg-4)' }}>·</span>
+          <span className="match-card-meta-sep">·</span>
           <span>{dayLabel}</span>
-          <span style={{ color: 'var(--fg-4)' }}>·</span>
+          <span className="match-card-meta-sep">·</span>
           <span>{timeLabel}</span>
-          <span style={{ color: 'var(--fg-4)' }}>·</span>
-          <span style={{ color: 'var(--fg-4)' }}>{match.venue}</span>
+          <span className="match-card-meta-sep match-card-meta-venue">·</span>
+          <span className="match-card-meta-venue">{match.venue}</span>
         </div>
-        <MatchStatusBadge status={status} saved={saved && !locked} />
+        <div className="shrink-0">
+          <MatchStatusBadge status={status} saved={saved && !locked} />
+        </div>
       </div>
 
-      <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'flex-end' }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--fg-1)' }}>{match.home.name}</div>
-            <div className="mono-label" style={{ color: 'var(--fg-3)' }}>{match.home.code}</div>
-          </div>
-          <FlagStripes colors={match.home.flag} />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0', padding: '0 20px' }}>
-          {locked ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              {displayScore ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>{displayScore.home}</span>
-                  <span style={{ fontSize: '24px', color: 'var(--fg-4)' }}>:</span>
-                  <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>{displayScore.away}</span>
-                </div>
-              ) : status === 'live' ? (
-                <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
-                  Partido en curso{match.elapsed != null ? ` · ${match.elapsed}'` : ''}
-                </span>
-              ) : concluded ? (
-                <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Resultado pendiente</span>
-              ) : (
-                <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Pronósticos cerrados</span>
-              )}
-              {hasPred && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
-                    Tu pronóstico: {prediction!.home}:{prediction!.away}
-                  </span>
-                  {points !== null && (
-                    <span className={`badge ${points === 6 ? 'exact' : points === 3 ? 'winner' : 'pts'}`} style={{ marginLeft: '4px' }}>
-                      {scoreLabel(points)}
-                    </span>
-                  )}
-                </div>
-              )}
-              {!hasPred && concluded && (
-                <span className="mono-label" style={{ color: 'var(--fg-4)' }}>Sin pronóstico</span>
-              )}
+      {isMobile ? (
+        <div className="match-card-body-mobile">
+          <div className="match-card-row">
+            <FlagStripes colors={match.home.flag} />
+            <div className="match-card-row-info">
+              <div className="match-card-team-name" title={match.home.name}>{match.home.name}</div>
+              <div className="match-card-team-code">{match.home.code}</div>
             </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {locked ? (
+              <span className="match-card-score-value">{displayScore?.home ?? '—'}</span>
+            ) : (
+              <ScoreInput
+                value={homeScore}
+                onChange={setHomeScore}
+                disabled={saving}
+                inputRef={homeRef}
+                className="score-input-inline"
+                aria-label={`Goles ${match.home.name}`}
+                onActivate={onActivate}
+                onEdited={markHomeEdited}
+                onTabNext={() => {
+                  awayRef.current?.focus()
+                  awayRef.current?.select()
+                }}
+              />
+            )}
+          </div>
+
+          <div className="match-card-row">
+            <FlagStripes colors={match.away.flag} />
+            <div className="match-card-row-info">
+              <div className="match-card-team-name" title={match.away.name}>{match.away.name}</div>
+              <div className="match-card-team-code">{match.away.code}</div>
+            </div>
+            {locked ? (
+              <span className="match-card-score-value">{displayScore?.away ?? '—'}</span>
+            ) : (
+              <ScoreInput
+                value={awayScore}
+                onChange={setAwayScore}
+                disabled={saving}
+                inputRef={awayRef}
+                className="score-input-inline"
+                aria-label={`Goles ${match.away.name}`}
+                onActivate={onActivate}
+                onEdited={markAwayEdited}
+                onTabNext={() => { void commitSave() }}
+                onBlurComplete={saveWhenComplete ? undefined : () => { void commitSave() }}
+              />
+            )}
+          </div>
+
+          {locked && (
+            <div className="match-card-mobile-footer">
+              <LockedScores
+                status={status}
+                concluded={concluded}
+                displayScore={displayScore}
+                hasPred={hasPred}
+                prediction={prediction}
+                points={points}
+                elapsed={match.elapsed}
+                compact
+              />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="match-card-body-desktop">
+          <div className="match-card-team match-card-team--home">
+            <div className="match-card-team-info match-card-team-info--home">
+              <div className="match-card-team-name match-card-team-name--desktop">{match.home.name}</div>
+              <div className="match-card-team-code">{match.home.code}</div>
+            </div>
+            <FlagStripes colors={match.home.flag} />
+          </div>
+
+          <div className="match-card-scores">
+            {locked ? (
+              <LockedScores
+                status={status}
+                concluded={concluded}
+                displayScore={displayScore}
+                hasPred={hasPred}
+                prediction={prediction}
+                points={points}
+                elapsed={match.elapsed}
+              />
+            ) : (
+              <div className="match-card-score-row">
               <ScoreInput
                 value={homeScore}
                 onChange={setHomeScore}
                 disabled={saving}
                 inputRef={homeRef}
                 aria-label={`Goles ${match.home.name}`}
-                onEdited={() => { homeEditedRef.current = true }}
-                onTabNext={() => awayRef.current?.focus()}
+                onActivate={onActivate}
+                onEdited={markHomeEdited}
+                onTabNext={() => {
+                  awayRef.current?.focus()
+                  awayRef.current?.select()
+                }}
               />
-              <span style={{ fontSize: '28px', color: 'var(--fg-4)', fontWeight: 300, lineHeight: 1 }}>:</span>
+              <span className="match-card-score-sep">:</span>
               <ScoreInput
                 value={awayScore}
                 onChange={setAwayScore}
                 disabled={saving}
                 inputRef={awayRef}
                 aria-label={`Goles ${match.away.name}`}
-                onEdited={() => { awayEditedRef.current = true }}
+                onActivate={onActivate}
+                onEdited={markAwayEdited}
                 onTabNext={() => { void commitSave() }}
                 onBlurComplete={saveWhenComplete ? undefined : () => { void commitSave() }}
               />
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <FlagStripes colors={match.away.flag} />
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--fg-1)' }}>{match.away.name}</div>
-            <div className="mono-label" style={{ color: 'var(--fg-3)' }}>{match.away.code}</div>
+          <div className="match-card-team match-card-team--away">
+            <FlagStripes colors={match.away.flag} />
+            <div className="match-card-team-info">
+              <div className="match-card-team-name match-card-team-name--desktop">{match.away.name}</div>
+              <div className="match-card-team-code">{match.away.code}</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

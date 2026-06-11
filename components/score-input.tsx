@@ -2,6 +2,8 @@
 
 import { type Ref, type KeyboardEvent } from 'react'
 
+import { cn } from '@/lib/utils'
+
 interface ScoreInputProps {
   value: number
   onChange: (value: number) => void
@@ -10,6 +12,8 @@ interface ScoreInputProps {
   onTabNext?: () => void
   onBlurComplete?: () => void
   onEdited?: () => void
+  onActivate?: () => void
+  className?: string
   'aria-label'?: string
 }
 
@@ -21,6 +25,8 @@ export function ScoreInput({
   onTabNext,
   onBlurComplete,
   onEdited,
+  onActivate,
+  className,
   'aria-label': ariaLabel,
 }: ScoreInputProps) {
   function handleChange(raw: string) {
@@ -35,6 +41,9 @@ export function ScoreInput({
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (/^\d$/.test(e.key)) {
+      onEdited?.()
+    }
     if (e.key === 'Enter') {
       e.preventDefault()
       onTabNext?.()
@@ -51,10 +60,13 @@ export function ScoreInput({
       value={value}
       disabled={disabled}
       aria-label={ariaLabel}
-      className="score-input"
+      className={cn('score-input', className)}
       onChange={e => handleChange(e.target.value)}
       onKeyDown={handleKeyDown}
-      onFocus={e => e.target.select()}
+      onFocus={e => {
+        onActivate?.()
+        e.target.select()
+      }}
       onBlur={() => onBlurComplete?.()}
     />
   )

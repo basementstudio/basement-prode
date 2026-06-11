@@ -54,6 +54,7 @@ interface GroupMatchesCarouselProps {
   now: Date
   userTz: string
   onGroupMatchComplete: (matchId: string) => void
+  onGroupMatchActivate: (groupIndex: number, matchIndex: number) => void
   onApiReady: (api: CarouselApi) => void
 }
 
@@ -68,6 +69,7 @@ export function GroupMatchesCarousel({
   now,
   userTz,
   onGroupMatchComplete,
+  onGroupMatchActivate,
   onApiReady,
 }: GroupMatchesCarouselProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
@@ -152,6 +154,7 @@ export function GroupMatchesCarousel({
                       highlighted={isActive}
                       focusToken={isActive ? focusToken : 0}
                       saveWhenComplete={isActive}
+                      onActivate={() => onGroupMatchActivate(groupIndex, matchIndex)}
                       onSaved={() => onGroupMatchComplete(match.id)}
                     />
                   )
