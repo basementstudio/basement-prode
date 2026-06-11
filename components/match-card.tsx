@@ -18,7 +18,7 @@ import { INPUT_PAUSE_MS } from '@/lib/prediction-flow'
 import { isValidScore } from '@/lib/score'
 import { useIsMobile } from '@/lib/use-mobile'
 import { ScoreInput } from '@/components/score-input'
-import { FlagStripes } from '@/components/flag-stripes'
+import { TeamFlag } from '@/components/team-flag'
 
 function MatchStatusBadge({
   status,
@@ -402,7 +402,7 @@ export function MatchCard({
       {isMobile ? (
         <div className="match-card-body-mobile">
           <div className="match-card-row">
-            <FlagStripes colors={match.home.flag} />
+            <TeamFlag code={match.home.code} fallbackColors={match.home.flag} />
             <div className="match-card-row-info">
               <div className="match-card-team-name" title={match.home.name}>{match.home.name}</div>
               <div className="match-card-team-code">{match.home.code}</div>
@@ -428,7 +428,7 @@ export function MatchCard({
           </div>
 
           <div className="match-card-row">
-            <FlagStripes colors={match.away.flag} />
+            <TeamFlag code={match.away.code} fallbackColors={match.away.flag} />
             <div className="match-card-row-info">
               <div className="match-card-team-name" title={match.away.name}>{match.away.name}</div>
               <div className="match-card-team-code">{match.away.code}</div>
@@ -473,7 +473,7 @@ export function MatchCard({
               <div className="match-card-team-name match-card-team-name--desktop">{match.home.name}</div>
               <div className="match-card-team-code">{match.home.code}</div>
             </div>
-            <FlagStripes colors={match.home.flag} />
+            <TeamFlag code={match.home.code} fallbackColors={match.home.flag} />
           </div>
 
           <div className="match-card-scores">
@@ -519,7 +519,7 @@ export function MatchCard({
           </div>
 
           <div className="match-card-team match-card-team--away">
-            <FlagStripes colors={match.away.flag} />
+            <TeamFlag code={match.away.code} fallbackColors={match.away.flag} />
             <div className="match-card-team-info">
               <div className="match-card-team-name match-card-team-name--desktop">{match.away.name}</div>
               <div className="match-card-team-code">{match.away.code}</div>

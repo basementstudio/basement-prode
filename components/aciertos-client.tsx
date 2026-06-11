@@ -9,7 +9,7 @@ import {
 } from '@/lib/wc2026/format-local'
 import { scoreLabel } from '@/lib/scoring'
 import type { ScoredPrediction } from '@/lib/actions'
-import { FlagStripes } from '@/components/flag-stripes'
+import { TeamFlag } from '@/components/team-flag'
 
 interface Props {
   totalPoints: number
@@ -41,7 +41,7 @@ function ResultRow({ item, userTz }: { item: ScoredPrediction; userTz: string })
 
       <div className="aciertos-row-body">
         <div className="aciertos-team aciertos-team--home">
-          <FlagStripes colors={match.home.flag} />
+          <TeamFlag code={match.home.code} fallbackColors={match.home.flag} />
           <span>{match.home.name}</span>
         </div>
 
@@ -60,7 +60,7 @@ function ResultRow({ item, userTz }: { item: ScoredPrediction; userTz: string })
         </div>
 
         <div className="aciertos-team aciertos-team--away">
-          <FlagStripes colors={match.away.flag} />
+          <TeamFlag code={match.away.code} fallbackColors={match.away.flag} />
           <span>{match.away.name}</span>
         </div>
       </div>

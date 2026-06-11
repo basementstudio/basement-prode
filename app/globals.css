@@ -1027,6 +1027,15 @@
 
 /* ---- Banderas ---- */
 
+@utility team-flag {
+  width: 28px;
+  height: 20px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
 @utility flag-stripes {
   width: 28px;
   height: 20px;
