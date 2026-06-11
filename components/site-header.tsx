@@ -69,6 +69,24 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
             />
           )}
         </Link>
+        <Link href="/en-vivo" className={navLinkClass(isEnVivo)}>
+          EN VIVO
+          {isEnVivo && (
+            <span
+              className="ml-1.5 size-[5px] shrink-0 rounded-full! bg-accent"
+              aria-hidden="true"
+            />
+          )}
+        </Link>
+        <Link href="/concluidos" className={navLinkClass(isConcluidos)}>
+          CONCLUIDOS
+          {isConcluidos && (
+            <span
+              className="ml-1.5 size-[5px] shrink-0 rounded-full! bg-accent"
+              aria-hidden="true"
+            />
+          )}
+        </Link>
         <Link href="/aciertos" className={navLinkClass(isAciertos)}>
           ACIERTOS
           {isAciertos && (

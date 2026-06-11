@@ -191,7 +191,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
             Cargá tus pronósticos.
           </h1>
           <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5' }}>
-            En <strong style={{ color: 'var(--fg-2)', fontWeight: 600 }}>Por grupo</strong> cargás partido a partido y avanzás al siguiente grupo al terminar. Horarios en {tzLabel}.
+            En Por grupo cargás partido a partido y avanzás al siguiente grupo al terminar. Horarios en {tzLabel}.
           </p>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '24px' }}>
