@@ -174,7 +174,17 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
           </div>
         )}
 
-        <div className="flex shrink-0 items-center lg:hidden">
+        <div className="flex shrink-0 items-center gap-2 lg:hidden">
+          <Link
+            href="/tabla"
+            className={cn(
+              'flex h-9 items-center border border-border px-3 font-mono text-[10px] uppercase tracking-wide no-underline transition-colors duration-200 ease-base hover:border-fg-2 hover:bg-gray-800 sm:text-[11px]',
+              pathname === '/tabla' ? 'border-fg-2 bg-gray-800 text-fg-1' : 'text-fg-2',
+            )}
+            aria-label="Ir a la tabla"
+          >
+            PRODE/BASEMENT
+          </Link>
           <Button
             variant="outline"
             onClick={() => setMenuOpen(open => !open)}
@@ -201,7 +211,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
             className="absolute inset-x-0 top-full z-50 max-h-[calc(100dvh-52px)] overflow-y-auto border-b border-border bg-black/95 backdrop-blur-sm scrollbar-none lg:hidden"
             aria-label="Navegación móvil"
           >
-            {NAV_ITEMS.map(item => {
+            {NAV_ITEMS.filter(item => item.href !== '/tabla').map(item => {
               const active = item.isActive(pathname)
               return (
                 <Link
