@@ -6,6 +6,7 @@ import { predictions, userProfiles, user } from '@/lib/db/schema'
 import { isMatchLocked, getMatchKickoffMs } from '@/lib/wc2026-data'
 import { getMatchByIdAsync, getGroupStageMatches } from '@/lib/wc2026/get-matches'
 import { calcPoints } from '@/lib/scoring'
+import { isValidScore } from '@/lib/score'
 import type { Match } from '@/lib/wc2026/types'
 import { and, eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
@@ -41,6 +42,10 @@ export async function savePrediction(
 
   const now = clientNowMs != null ? new Date(clientNowMs) : new Date()
   if (isMatchLocked(match, now)) throw new Error('Este partido ya empezó y no se puede editar')
+
+  if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
+    throw new Error('Marcador inválido: usá enteros de 0 a 99')
+  }
 
   const existing = await db
     .select()

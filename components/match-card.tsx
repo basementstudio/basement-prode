@@ -15,6 +15,7 @@ import {
 } from '@/lib/wc2026/format-local'
 import { calcPoints, scoreLabel } from '@/lib/scoring'
 import { INPUT_PAUSE_MS } from '@/lib/prediction-flow'
+import { isValidScore } from '@/lib/score'
 import { useIsMobile } from '@/lib/use-mobile'
 import { ScoreInput } from '@/components/score-input'
 import { FlagStripes } from '@/components/flag-stripes'
@@ -159,10 +160,12 @@ export function MatchCard({
   const savedCallbackRef = useRef(onSaved)
   const homeEditedRef = useRef(false)
   const awayEditedRef = useRef(false)
+  const awayTouchedRef = useRef(false)
   const committingRef = useRef(false)
   const prevFocusedRef = useRef(focused)
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const focusAwayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const partialSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   savedCallbackRef.current = onSaved
 
   const markHomeEdited = useCallback(() => {
@@ -175,6 +178,14 @@ export function MatchCard({
     setEditEpoch(n => n + 1)
   }, [])
 
+  const markAwayTouched = useCallback(() => {
+    awayTouchedRef.current = true
+    if (partialSaveTimerRef.current) {
+      clearTimeout(partialSaveTimerRef.current)
+      partialSaveTimerRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     setHomeScore(prediction?.home ?? 0)
     setAwayScore(prediction?.away ?? 0)
@@ -182,6 +193,7 @@ export function MatchCard({
     if (!focused) {
       homeEditedRef.current = false
       awayEditedRef.current = false
+      awayTouchedRef.current = false
     }
   }, [prediction?.home, prediction?.away, prediction, match.id, focused])
 
@@ -192,6 +204,7 @@ export function MatchCard({
     if (focused && !locked && !wasFocused) {
       homeEditedRef.current = false
       awayEditedRef.current = false
+      awayTouchedRef.current = false
     }
 
     if (wasFocused && !focused && !locked) {
@@ -207,7 +220,7 @@ export function MatchCard({
     const active = document.activeElement
     if (active === homeRef.current || active === awayRef.current) return
     const frame = requestAnimationFrame(() => {
-      homeRef.current?.focus()
+      homeRef.current?.focus({ preventScroll: true })
       homeRef.current?.select()
     })
     return () => cancelAnimationFrame(frame)
@@ -224,7 +237,7 @@ export function MatchCard({
   const timeLabel = formatKickoffTime(match.kickoffUtc, userTz)
 
   async function handleSave(h: number, a: number) {
-    if (locked) return
+    if (locked || !isValidScore(h) || !isValidScore(a)) return
     setSaving(true)
     try {
       await onSave(match.id, h, a)
@@ -235,12 +248,37 @@ export function MatchCard({
     }
   }
 
-  function bothEdited() {
+  function readyToCommit() {
+    const predHome = prediction?.home ?? 0
+    const predAway = prediction?.away ?? 0
+    const homeChanged = homeScore !== predHome
+    const awayChanged = awayScore !== predAway
+
+    if (!prediction) {
+      return homeEditedRef.current && awayEditedRef.current
+    }
+
+    if (!homeChanged && !awayChanged) {
+      return homeEditedRef.current && awayEditedRef.current
+    }
+    if (!homeChanged && awayChanged) {
+      return awayEditedRef.current
+    }
+    if (homeChanged && !awayChanged) {
+      return homeEditedRef.current
+    }
     return homeEditedRef.current && awayEditedRef.current
   }
 
+  function canAutoConfirmAwayAfterHomeEdit() {
+    if (!prediction || !homeEditedRef.current || awayEditedRef.current || awayTouchedRef.current) {
+      return false
+    }
+    return homeScore !== prediction.home && awayScore === prediction.away
+  }
+
   async function commitSave() {
-    if (locked || saving || committingRef.current || !bothEdited()) return
+    if (locked || saving || committingRef.current || !readyToCommit()) return
 
     committingRef.current = true
     try {
@@ -260,6 +298,7 @@ export function MatchCard({
 
   useEffect(() => () => {
     if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
+    if (partialSaveTimerRef.current) clearTimeout(partialSaveTimerRef.current)
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
   }, [])
 
@@ -269,12 +308,18 @@ export function MatchCard({
 
     if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
     focusAwayTimerRef.current = setTimeout(() => {
-      awayRef.current?.focus()
+      awayRef.current?.focus({ preventScroll: true })
       awayRef.current?.select()
+      if (partialSaveTimerRef.current) clearTimeout(partialSaveTimerRef.current)
+      partialSaveTimerRef.current = setTimeout(() => {
+        if (!canAutoConfirmAwayAfterHomeEdit()) return
+        void commitSave()
+      }, INPUT_PAUSE_MS)
     }, INPUT_PAUSE_MS)
 
     return () => {
       if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
+      if (partialSaveTimerRef.current) clearTimeout(partialSaveTimerRef.current)
     }
   }, [homeScore, locked, saving, saveWhenComplete, focused, editEpoch])
 
@@ -282,7 +327,8 @@ export function MatchCard({
     if (locked || saving) return
 
     if (saveWhenComplete) {
-      if (!bothEdited()) return
+      if (!readyToCommit()) return
+      if (canAutoConfirmAwayAfterHomeEdit()) return
       if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
 
       autoSaveRef.current = setTimeout(() => {
@@ -333,7 +379,7 @@ export function MatchCard({
           <span className="match-card-meta-sep match-card-meta-venue">·</span>
           <span className="match-card-meta-venue">{match.venue}</span>
         </div>
-        <div className="shrink-0">
+        <div className="match-card-header-badge">
           <MatchStatusBadge status={status} saved={saved && !locked} />
         </div>
       </div>
@@ -359,7 +405,7 @@ export function MatchCard({
                 onActivate={onActivate}
                 onEdited={markHomeEdited}
                 onTabNext={() => {
-                  awayRef.current?.focus()
+                  awayRef.current?.focus({ preventScroll: true })
                   awayRef.current?.select()
                 }}
               />
@@ -384,6 +430,7 @@ export function MatchCard({
                 aria-label={`Goles ${match.away.name}`}
                 onActivate={onActivate}
                 onEdited={markAwayEdited}
+                onInteraction={markAwayTouched}
                 onTabNext={() => { void commitSave() }}
                 onBlurComplete={saveWhenComplete ? undefined : () => { void commitSave() }}
               />
@@ -437,7 +484,7 @@ export function MatchCard({
                 onActivate={onActivate}
                 onEdited={markHomeEdited}
                 onTabNext={() => {
-                  awayRef.current?.focus()
+                  awayRef.current?.focus({ preventScroll: true })
                   awayRef.current?.select()
                 }}
               />
@@ -450,6 +497,7 @@ export function MatchCard({
                 aria-label={`Goles ${match.away.name}`}
                 onActivate={onActivate}
                 onEdited={markAwayEdited}
+                onInteraction={markAwayTouched}
                 onTabNext={() => { void commitSave() }}
                 onBlurComplete={saveWhenComplete ? undefined : () => { void commitSave() }}
               />

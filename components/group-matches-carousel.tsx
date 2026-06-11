@@ -1,47 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   type CarouselApi,
 } from '@/components/ui/carousel'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { MatchCard } from '@/components/match-card'
+import { cn } from '@/lib/utils'
 import type { Match } from '@/lib/wc2026-data'
 
 type PredMap = Record<string, { home: number; away: number }>
-
-function GroupHeader({ group }: { group: string }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '16px',
-        borderBottom: '1px solid var(--fg-4)',
-        borderTop: '1px solid var(--fg-4)',
-        background: 'rgba(235,235,235,0.02)',
-      }}
-    >
-      <span
-        style={{
-          fontSize: '24px',
-          fontWeight: 700,
-          color: 'var(--fg-1)',
-          letterSpacing: '-0.02em',
-        }}
-      >
-        GRUPO {group}
-      </span>
-      <div style={{ flex: 1, height: '1px', background: 'var(--fg-4)' }} />
-    </div>
-  )
-}
 
 interface GroupMatchesCarouselProps {
   groups: { group: string; matches: Match[] }[]
@@ -73,6 +43,8 @@ export function GroupMatchesCarousel({
   onApiReady,
 }: GroupMatchesCarouselProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
+  const groupTabsRef = useRef<HTMLElement>(null)
+  const syncingFromUserRef = useRef(false)
 
   useEffect(() => {
     if (!carouselApi) return
@@ -83,11 +55,11 @@ export function GroupMatchesCarousel({
     if (!carouselApi) return
 
     const onSelect = () => {
+      if (syncingFromUserRef.current) return
       onGroupIndexChange(carouselApi.selectedScrollSnap())
     }
 
     carouselApi.on('select', onSelect)
-    onSelect()
 
     return () => {
       carouselApi.off('select', onSelect)
@@ -97,47 +69,58 @@ export function GroupMatchesCarousel({
   useEffect(() => {
     if (!carouselApi) return
     if (carouselApi.selectedScrollSnap() === currentGroupIndex) return
+
+    syncingFromUserRef.current = true
     carouselApi.scrollTo(currentGroupIndex, false)
+    requestAnimationFrame(() => {
+      syncingFromUserRef.current = false
+    })
   }, [carouselApi, currentGroupIndex])
+
+  const scrollGroupTabIntoView = useCallback((index: number) => {
+    const nav = groupTabsRef.current
+    const tab = nav?.querySelector<HTMLElement>(`[data-group-tab="${index}"]`)
+    if (!nav || !tab) return
+
+    const targetLeft = tab.offsetLeft - nav.clientWidth / 2 + tab.clientWidth / 2
+    nav.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
+  }, [])
+
+  useEffect(() => {
+    scrollGroupTabIntoView(currentGroupIndex)
+  }, [currentGroupIndex, scrollGroupTabIntoView])
 
   const scrollToGroup = useCallback(
     (index: number) => {
+      onGroupIndexChange(index)
       carouselApi?.scrollTo(index)
     },
-    [carouselApi],
+    [carouselApi, onGroupIndexChange],
   )
 
   const currentGroup = groups[currentGroupIndex]
 
   return (
-    <div className="w-full">
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-        }}
-      >
-        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
-          GRUPO {currentGroup?.group ?? '—'}
-        </span>
-        <span className="mono-label" style={{ color: 'var(--fg-2)' }}>
+    <div className="w-full min-w-0">
+      <div className="group-carousel-header">
+        <h2 className="group-carousel-title">Grupo {currentGroup?.group ?? '—'}</h2>
+        <span className="mono-label" style={{ color: 'var(--fg-2)', flexShrink: 0 }}>
           {currentGroupIndex + 1} / {groups.length}
         </span>
       </div>
 
       <Carousel
         setApi={setCarouselApi}
-        opts={{ align: 'start', loop: false, dragFree: false }}
-        plugins={[WheelGesturesPlugin({ forceWheelAxis: 'x' })]}
-        className="w-full touch-pan-y"
+        opts={{ align: 'start', loop: false, containScroll: 'trimSnaps', watchDrag: true }}
+        className="group-carousel-viewport"
       >
-        <CarouselContent className="ml-0">
+        <CarouselContent className="group-carousel-track ml-0">
           {groups.map((group, groupIndex) => (
-            <CarouselItem key={group.group} className="basis-full pl-0">
-              <GroupHeader group={group.group} />
-              <div style={{ border: '1px solid var(--fg-4)', borderTop: 'none' }}>
+            <CarouselItem
+              key={group.group}
+              className="group-carousel-slide basis-full pl-0"
+            >
+              <div className="w-full min-w-0" style={{ border: '1px solid var(--fg-4)' }}>
                 {group.matches.map((match, matchIndex) => {
                   const isGroupActive = groupIndex === currentGroupIndex
                   const isActive = isGroupActive && matchIndex === activeGroupMatchIndex
@@ -165,29 +148,23 @@ export function GroupMatchesCarousel({
         </CarouselContent>
       </Carousel>
 
-      <nav
-        className="flex flex-wrap justify-center gap-2"
-        style={{ margin: '24px 0' }}
-        aria-label="Grupos"
-      >
-        {groups.map((group, index) => (
-          <Button
-            key={group.group}
-            type="button"
-            variant={index === currentGroupIndex ? 'default' : 'outline'}
-            size="sm"
-            className={cn(
-              'min-w-9 font-bold tabular-nums',
-              index === currentGroupIndex && 'pointer-events-none',
-            )}
-            onClick={() => scrollToGroup(index)}
-            aria-label={`Grupo ${group.group}`}
-            aria-current={index === currentGroupIndex ? 'true' : undefined}
-          >
-            {group.group}
-          </Button>
-        ))}
-      </nav>
+      <div className="group-tabs-wrap">
+        <nav ref={groupTabsRef} className="group-tabs scrollbar-none" aria-label="Grupos">
+          {groups.map((group, index) => (
+            <button
+              key={group.group}
+              type="button"
+              data-group-tab={index}
+              className={cn('group-tab', index === currentGroupIndex && 'is-active')}
+              onClick={() => scrollToGroup(index)}
+              aria-label={`Grupo ${group.group}`}
+              aria-current={index === currentGroupIndex ? 'true' : undefined}
+            >
+              {group.group}
+            </button>
+          ))}
+        </nav>
+      </div>
     </div>
   )
 }

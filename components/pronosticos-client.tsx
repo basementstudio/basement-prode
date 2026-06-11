@@ -12,6 +12,7 @@ import type { MatchDataSource } from '@/lib/wc2026/get-matches'
 import { formatTimezoneLabel, getUserTimezone } from '@/lib/wc2026/format-local'
 import { savePrediction } from '@/lib/actions'
 import { GROUP_ADVANCE_MS, focusMatchInput } from '@/lib/prediction-flow'
+import { cn } from '@/lib/utils'
 import { MatchCard } from '@/components/match-card'
 import { GroupMatchesCarousel } from '@/components/group-matches-carousel'
 import type { CarouselApi } from '@/components/ui/carousel'
@@ -155,11 +156,10 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
     setCurrentGroupIndex(index)
     const group = groupsUpcomingRef.current[index]
     if (!group) return
-    const matchIndex = firstUnsavedIndexInGroup(group.matches, predictionsRef.current)
-    setActiveGroupMatchIndex(matchIndex)
-    const match = group.matches[matchIndex]
-    if (match) bumpFocus(match.id)
-  }, [bumpFocus])
+    setActiveGroupMatchIndex(
+      firstUnsavedIndexInGroup(group.matches, predictionsRef.current),
+    )
+  }, [])
 
   const handleGroupMatchActivate = useCallback((groupIndex: number, matchIndex: number) => {
     if (groupIndex !== currentGroupIndex) {
@@ -283,7 +283,8 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
           <button
             key={key}
             type="button"
-            className={`view-mode-tab${viewMode === key ? ' active' : ''}`}
+            className={cn('view-mode-tab', viewMode === key && 'is-active')}
+            aria-pressed={viewMode === key}
             onClick={() => setViewMode(key)}
           >
             {label}
