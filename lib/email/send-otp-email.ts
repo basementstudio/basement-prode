@@ -93,9 +93,7 @@ export async function sendOtpEmail({ email, otp, type }: SendOtpEmailParams): Pr
 
   const from = process.env.EMAIL_FROM ?? `Prode 2026 <${user}>`
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: false,
+    service: 'gmail',
     auth: { user, pass },
   })
 
