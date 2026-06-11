@@ -1,0 +1,145 @@
+'use server'
+
+import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { predictions, userProfiles, user } from '@/lib/db/schema'
+import { and, eq } from 'drizzle-orm'
+import { headers } from 'next/headers'
+import { revalidatePath } from 'next/cache'
+import { nanoid } from 'nanoid'
+
+async function getUserId() {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) throw new Error('Unauthorized')
+  return session.user.id
+}
+
+export async function getPredictions(): Promise<Record<string, { home: number; away: number }>> {
+  const userId = await getUserId()
+  const rows = await db.select().from(predictions).where(eq(predictions.userId, userId))
+  const map: Record<string, { home: number; away: number }> = {}
+  for (const r of rows) {
+    map[r.matchId] = { home: r.homeScore, away: r.awayScore }
+  }
+  return map
+}
+
+export async function savePrediction(matchId: string, homeScore: number, awayScore: number) {
+  const userId = await getUserId()
+
+  const existing = await db
+    .select()
+    .from(predictions)
+    .where(and(eq(predictions.userId, userId), eq(predictions.matchId, matchId)))
+    .limit(1)
+
+  if (existing.length > 0) {
+    await db
+      .update(predictions)
+      .set({ homeScore, awayScore, updatedAt: new Date() })
+      .where(and(eq(predictions.userId, userId), eq(predictions.matchId, matchId)))
+  } else {
+    await db.insert(predictions).values({
+      id: nanoid(),
+      userId,
+      matchId,
+      homeScore,
+      awayScore,
+    })
+  }
+  revalidatePath('/pronosticos')
+  revalidatePath('/tabla')
+}
+
+export async function getLeaderboard() {
+  const allUsers = await db.select().from(user)
+  const allPreds = await db.select().from(predictions)
+  const allProfiles = await db.select().from(userProfiles)
+
+  // Only score matches that have a real result (from data file)
+  const { ALL_MATCHES } = await import('@/lib/wc2026-data')
+  const playedMatches = ALL_MATCHES.filter(m => m.result)
+
+  const scores: Record<string, number> = {}
+  for (const u of allUsers) {
+    scores[u.id] = 0
+  }
+
+  for (const match of playedMatches) {
+    const result = match.result!
+    for (const pred of allPreds.filter(p => p.matchId === match.id)) {
+      // Exact score: 6 pts
+      if (pred.homeScore === result.home && pred.awayScore === result.away) {
+        scores[pred.userId] = (scores[pred.userId] || 0) + 6
+      }
+      // Correct winner/draw: 3 pts
+      else {
+        const predWinner =
+          pred.homeScore > pred.awayScore ? 'home' :
+          pred.homeScore < pred.awayScore ? 'away' : 'draw'
+        const realWinner =
+          result.home > result.away ? 'home' :
+          result.home < result.away ? 'away' : 'draw'
+        if (predWinner === realWinner) {
+          scores[pred.userId] = (scores[pred.userId] || 0) + 3
+        }
+      }
+    }
+  }
+
+  const profileMap: Record<string, { displayName: string | null; avatarUrl: string | null }> = {}
+  for (const p of allProfiles) {
+    profileMap[p.userId] = { displayName: p.displayName, avatarUrl: p.avatarUrl }
+  }
+
+  return allUsers
+    .map(u => ({
+      id: u.id,
+      email: u.email,
+      name: profileMap[u.id]?.displayName || u.name,
+      avatarUrl: profileMap[u.id]?.avatarUrl || null,
+      points: scores[u.id] || 0,
+    }))
+    .sort((a, b) => b.points - a.points)
+    .map((u, i) => ({ ...u, rank: i + 1 }))
+}
+
+export async function getMyProfile() {
+  const userId = await getUserId()
+  const session = await auth.api.getSession({ headers: await headers() })
+  const profile = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1)
+  return {
+    userId,
+    email: session!.user.email,
+    name: session!.user.name,
+    displayName: profile[0]?.displayName || null,
+    avatarUrl: profile[0]?.avatarUrl || null,
+  }
+}
+
+export async function updateProfile(displayName: string) {
+  const userId = await getUserId()
+  const existing = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1)
+
+  if (existing.length > 0) {
+    await db
+      .update(userProfiles)
+      .set({ displayName, updatedAt: new Date() })
+      .where(eq(userProfiles.userId, userId))
+  } else {
+    await db.insert(userProfiles).values({
+      id: nanoid(),
+      userId,
+      displayName,
+    })
+  }
+  revalidatePath('/tabla')
+}

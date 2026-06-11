@@ -1,0 +1,661 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* ============================================================
+   PRODE/2026 — DESIGN SYSTEM
+   Basement.studio editorial-brutalista
+   ============================================================ */
+
+@theme inline {
+  /* Fonts */
+  --font-sans:  var(--font-geist-sans), 'Geist', system-ui, sans-serif;
+  --font-mono:  var(--font-geist-mono), 'Geist Mono', 'Courier New', monospace;
+
+  /* Colors mapped to Tailwind */
+  --color-background:   var(--color-primary);
+  --color-foreground:   var(--color-secondary);
+  --color-border:       var(--fg-4);
+  --color-accent:       var(--color-contrast);
+  --color-hover:        var(--color-gray-800);
+  --color-muted:        var(--fg-3);
+
+  /* Radii — all zero */
+  --radius:             0px;
+  --radius-sm:          0px;
+  --radius-md:          0px;
+  --radius-lg:          0px;
+  --radius-xl:          0px;
+
+  /* Easing */
+  --ease-base:          cubic-bezier(0.4, 0, 0, 1);
+  --duration-fast:      120ms;
+  --duration-base:      200ms;
+  --duration-slow:      400ms;
+}
+
+:root {
+  /* ---- Palette ---- */
+  --color-primary:     #000000;
+  --color-secondary:   #EBEBEB;
+  --color-contrast:    #FF4D00;
+  --color-gray-800:    #1A1A1A;
+
+  /* ---- Foreground hierarchy (off-white with opacity) ---- */
+  --fg-1:  rgba(235, 235, 235, 1.00);    /* 100% */
+  --fg-2:  rgba(235, 235, 235, 0.70);    /*  70% */
+  --fg-3:  rgba(235, 235, 235, 0.55);    /*  55% */
+  --fg-4:  rgba(235, 235, 235, 0.20);    /*  20% — borders/dividers */
+
+  /* ---- Spacing unit ---- */
+  --space:  4px;
+
+  /* ---- Grid paper bg (tenue, over black) ---- */
+  --grid-color: rgba(255, 255, 255, 0.04);
+  --grid-size:  80px;
+}
+
+/* ============================================================
+   GLOBAL BASE
+   ============================================================ */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    border-radius: 0 !important;
+  }
+
+  html {
+    background-color: var(--color-primary);
+    color: var(--fg-1);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Grid paper texture */
+    background-image:
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
+    background-attachment: fixed;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: transparent;
+    color: var(--fg-1);
+  }
+
+  /* Remove all default focus outlines; custom focus via accent */
+  *:focus-visible {
+    outline: 1px solid var(--color-contrast);
+    outline-offset: 2px;
+  }
+
+  /* Borders default */
+  hr {
+    border: none;
+    border-top: 1px solid var(--fg-4);
+  }
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--fg-1);
+  }
+
+  p, li, td, th {
+    line-height: 1.5;
+  }
+}
+
+/* ============================================================
+   MONO LABEL UTILITY  (.mono-label)
+   Used for: nav, eyebrows, column headers, chips, sysbar
+   ============================================================ */
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+/* ============================================================
+   SYSBAR
+   ============================================================ */
+.sysbar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 40px;
+  border-bottom: 1px solid var(--fg-4);
+  padding: 0 24px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  background: transparent;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.sysbar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  border-right: 1px solid var(--fg-4);
+  height: 100%;
+  flex-shrink: 0;
+}
+.sysbar-item:first-child {
+  padding-left: 0;
+}
+.sysbar-item.accent {
+  color: var(--color-contrast);
+}
+.sysbar-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--color-contrast);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.site-header {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  border-bottom: 1px solid var(--fg-4);
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(8px);
+}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+.nav-link {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-2);
+  padding: 0 16px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  transition: color var(--duration-base) var(--ease-base);
+  text-decoration: none;
+}
+.nav-link:hover {
+  color: var(--fg-1);
+}
+.nav-link.active {
+  color: var(--fg-1);
+}
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: var(--color-contrast);
+}
+.nav-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50% !important;
+  background: var(--color-contrast);
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   CELL — denso bloque con borde 1px y 4 corner ticks
+   ============================================================ */
+.cell {
+  position: relative;
+  border: 1px solid var(--fg-4);
+  background: transparent;
+}
+/* top-left + top-right corners */
+.cell::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 6px;
+  height: 6px;
+  background: var(--fg-1);
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: calc(100% + 6px + 1px) 0 0 var(--fg-1);
+}
+/* bottom-left + bottom-right corners */
+.cell::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: -3px;
+  width: 6px;
+  height: 6px;
+  background: var(--fg-1);
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: calc(100% + 6px + 1px) 0 0 var(--fg-1);
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--fg-4);
+  background: transparent;
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-base),
+    color var(--duration-fast) var(--ease-base),
+    border-color var(--duration-fast) var(--ease-base);
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+}
+.btn:hover {
+  background: var(--color-gray-800);
+  color: var(--fg-1);
+  border-color: var(--fg-2);
+}
+.btn:hover .btn-arrow {
+  transform: translateX(3px);
+}
+.btn-arrow {
+  transition: transform var(--duration-fast) var(--ease-base);
+  display: inline-block;
+}
+.btn.solid {
+  background: var(--fg-1);
+  color: #000;
+  border-color: var(--fg-1);
+}
+.btn.solid:hover {
+  background: var(--color-contrast);
+  border-color: var(--color-contrast);
+  color: #fff;
+}
+.btn.solid:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   CHIP FILTER
+   ============================================================ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--fg-4);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  cursor: pointer;
+  background: transparent;
+  transition: all var(--duration-fast) var(--ease-base);
+  user-select: none;
+}
+.chip:hover {
+  background: var(--color-gray-800);
+  color: var(--fg-1);
+}
+.chip.active {
+  border-color: var(--fg-1);
+  color: var(--fg-1);
+  background: var(--color-gray-800);
+}
+.chip-count {
+  color: var(--fg-3);
+  font-size: 10px;
+}
+.chip.active .chip-count {
+  color: var(--fg-2);
+}
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+.input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--fg-4);
+  color: var(--fg-1);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  transition: border-color var(--duration-fast) var(--ease-base);
+  outline: none;
+}
+.input::placeholder {
+  color: var(--fg-3);
+}
+.input:focus {
+  border-color: var(--fg-2);
+}
+.input.error {
+  border-color: var(--color-contrast);
+}
+
+/* OTP input boxes */
+.otp-input {
+  width: 56px;
+  height: 64px;
+  border: 1px solid var(--fg-4);
+  background: transparent;
+  color: var(--fg-1);
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0;
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-base);
+  caret-color: var(--color-contrast);
+}
+.otp-input:focus {
+  border-color: var(--color-contrast);
+}
+
+/* ============================================================
+   STEPPER (marcador)
+   ============================================================ */
+.stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--fg-4);
+  background: transparent;
+  color: var(--fg-2);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition:
+    background var(--duration-fast) var(--ease-base),
+    color var(--duration-fast) var(--ease-base);
+  user-select: none;
+}
+.stepper-btn:hover {
+  background: var(--color-gray-800);
+  color: var(--fg-1);
+}
+.stepper-btn:active {
+  background: var(--fg-4);
+}
+.stepper-value {
+  font-family: var(--font-sans);
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--fg-1);
+  line-height: 1;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* ============================================================
+   MATCH CARD
+   ============================================================ */
+.match-card {
+  border: 1px solid var(--fg-4);
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease-base);
+}
+.match-card.highlighted {
+  border-color: var(--color-contrast);
+  background: rgba(255, 77, 0, 0.04);
+}
+.match-card.played {
+  opacity: 0.8;
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.dtable {
+  width: 100%;
+  border-collapse: collapse;
+}
+.dtable th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-3);
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--fg-4);
+  font-weight: 500;
+}
+.dtable td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--fg-4);
+  color: var(--fg-2);
+  font-size: 14px;
+}
+.dtable tr:last-child td {
+  border-bottom: none;
+}
+.dtable tr.my-row td {
+  color: var(--fg-1);
+}
+.dtable tr:hover td {
+  background: var(--color-gray-800);
+}
+
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+.progress-bar {
+  height: 2px;
+  background: var(--fg-4);
+  position: relative;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--color-contrast);
+  transition: width var(--duration-slow) var(--ease-base);
+}
+
+/* ============================================================
+   EYEBROW
+   ============================================================ */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+}
+.eyebrow .num {
+  color: var(--color-contrast);
+}
+.eyebrow .sep {
+  color: var(--fg-4);
+  margin: 0 8px;
+}
+
+/* ============================================================
+   BADGE
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid currentColor;
+  line-height: 1;
+}
+.badge.you {
+  color: var(--color-contrast);
+  border-color: var(--color-contrast);
+}
+.badge.pts {
+  color: var(--fg-3);
+  border-color: var(--fg-4);
+}
+.badge.exact {
+  color: var(--color-contrast);
+  background: rgba(255, 77, 0, 0.1);
+  border-color: var(--color-contrast);
+}
+.badge.winner {
+  color: var(--fg-2);
+  border-color: var(--fg-4);
+}
+
+/* ============================================================
+   FLAG STRIPES
+   ============================================================ */
+.flag-stripes {
+  width: 28px;
+  height: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.flag-stripe {
+  flex: 1;
+}
+
+/* ============================================================
+   AVATAR (monogram)
+   ============================================================ */
+.avatar {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--fg-4);
+  background: var(--color-gray-800);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-2);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.avatar.lg {
+  width: 80px;
+  height: 80px;
+  font-size: 24px;
+  border-color: var(--color-contrast);
+}
+
+/* ============================================================
+   PODIUM CELLS
+   ============================================================ */
+.podium-cell {
+  border: 1px solid var(--fg-4);
+  padding: 24px;
+  position: relative;
+}
+.podium-cell.gold   { border-top-color: #FFD700; }
+.podium-cell.silver { border-top-color: #C0C0C0; }
+.podium-cell.bronze { border-top-color: #CD7F32; }
+.podium-rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+}
+.podium-rank.gold   { color: #FFD700; }
+.podium-rank.silver { color: #C0C0C0; }
+.podium-rank.bronze { color: #CD7F32; }
+
+/* ============================================================
+   USER CHIP (header right)
+   ============================================================ */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--fg-4);
+  padding: 0 12px;
+  height: 36px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-base);
+}
+.user-chip:hover {
+  background: var(--color-gray-800);
+  border-color: var(--fg-2);
+}
+
+/* ============================================================
+   SCROLL utilities
+   ============================================================ */
+html {
+  scroll-behavior: smooth;
+}
+.scroll-target {
+  scroll-margin-top: 80px;
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes highlight-pulse {
+  0%   { background: rgba(255, 77, 0, 0.12); }
+  100% { background: transparent; }
+}
+.highlight-flash {
+  animation: highlight-pulse 600ms var(--ease-base) forwards;
+}
