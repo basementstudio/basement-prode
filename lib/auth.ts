@@ -15,16 +15,22 @@ export const auth = betterAuth({
         : process.env.V0_RUNTIME_URL),
   plugins: [
     emailOTP({
+      resendStrategy: 'reuse',
       async sendVerificationOTP({ email, otp, type }) {
-        void sendOtpEmail({ email, otp, type }).catch((err) => {
+        try {
+          await sendOtpEmail({ email, otp, type })
+        } catch (err) {
           console.error('[auth] Error al enviar OTP por email:', err)
-        })
+          throw err
+        }
       },
       otpLength: 6,
       expiresIn: 600,
     }),
   ],
   trustedOrigins: [
+    ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
+    'http://localhost:3000',
     ...(process.env.V0_RUNTIME_URL ? [process.env.V0_RUNTIME_URL] : []),
     ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
     ...(process.env.VERCEL_PROJECT_PRODUCTION_URL
@@ -39,8 +45,8 @@ export const auth = betterAuth({
     ? {
         advanced: {
           defaultCookieAttributes: {
-            sameSite: 'none' as const,
-            secure: true,
+            sameSite: 'lax' as const,
+            secure: false,
           },
         },
       }

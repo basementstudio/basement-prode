@@ -9,6 +9,13 @@ const OTP_LENGTH = 6
 
 type Step = 'email' | 'otp'
 
+function otpErrorMessage(error: { message?: string; code?: string } | null | undefined): string {
+  if (!error) return 'Código incorrecto o expirado. Pedí uno nuevo.'
+  if (error.code === 'OTP_EXPIRED') return 'El código expiró. Pedí uno nuevo.'
+  if (error.code === 'TOO_MANY_ATTEMPTS') return 'Demasiados intentos. Pedí un código nuevo.'
+  return error.message || 'Código incorrecto o expirado. Pedí uno nuevo.'
+}
+
 export function LoginForm() {
   const router = useRouter()
   const [step, setStep] = useState<Step>('email')
@@ -19,7 +26,38 @@ export function LoginForm() {
   const [sent, setSent] = useState(false)
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
+  const verifyingRef = useRef(false)
+  const emailRef = useRef(email)
+  emailRef.current = email
 
+  const handleVerify = useCallback(async (rawCode: string) => {
+    const code = rawCode.replace(/\D/g, '').slice(0, OTP_LENGTH)
+    if (code.length !== OTP_LENGTH || verifyingRef.current) return
+
+    verifyingRef.current = true
+    setError('')
+    setLoading(true)
+    try {
+      const result = await authClient.signIn.emailOtp({
+        email: emailRef.current.toLowerCase(),
+        otp: code,
+      })
+      if (result.error) {
+        setError(otpErrorMessage(result.error))
+        setOtp(Array(OTP_LENGTH).fill(''))
+        otpRefs.current[0]?.focus()
+      } else {
+        router.push('/pronosticos')
+        router.refresh()
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al verificar. Intentá de nuevo.'
+      setError(message)
+    } finally {
+      setLoading(false)
+      verifyingRef.current = false
+    }
+  }, [router])
   // ---- Step 1: send OTP ----
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
@@ -46,52 +84,29 @@ export function LoginForm() {
   }
 
   // ---- Step 2: verify OTP ----
-  async function handleVerify(code: string) {
-    setError('')
-    setLoading(true)
-    try {
-      const result = await authClient.signIn.emailOtp({
-        email: email.toLowerCase(),
-        otp: code,
-      })
-      if (result.error) {
-        setError('Código incorrecto o expirado. Pedí uno nuevo.')
-        setOtp(Array(OTP_LENGTH).fill(''))
-        otpRefs.current[0]?.focus()
-      } else {
-        router.push('/pronosticos')
-        router.refresh()
-      }
-    } catch (err: any) {
-      setError(err?.message || 'Error al verificar. Intentá de nuevo.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // (handleVerify defined above)
 
-  // OTP input handling
   const handleOtpChange = useCallback((index: number, value: string) => {
     const char = value.replace(/\D/g, '').slice(-1)
-    const next = [...otp]
-    next[index] = char
-    setOtp(next)
+    setOtp((prev) => {
+      const next = [...prev]
+      next[index] = char
+      if (char && next.every((c) => c !== '')) {
+        queueMicrotask(() => handleVerify(next.join('')))
+      }
+      return next
+    })
 
     if (char && index < OTP_LENGTH - 1) {
       otpRefs.current[index + 1]?.focus()
     }
+  }, [handleVerify])
 
-    // Auto-submit when all filled
-    if (char && next.every(c => c !== '')) {
-      const code = next.join('')
-      handleVerify(code)
-    }
-  }, [otp])
-
-  const handleOtpKeyDown = useCallback((index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+  const handleOtpKeyDown = useCallback((index: number, e: React.KeyboardEvent, current: string) => {
+    if (e.key === 'Backspace' && !current && index > 0) {
       otpRefs.current[index - 1]?.focus()
     }
-  }, [otp])
+  }, [])
 
   const handleOtpPaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault()
@@ -103,9 +118,9 @@ export function LoginForm() {
     const focusIdx = Math.min(pasted.length, OTP_LENGTH - 1)
     otpRefs.current[focusIdx]?.focus()
     if (pasted.length === OTP_LENGTH) {
-      handleVerify(pasted)
+      queueMicrotask(() => handleVerify(pasted))
     }
-  }, [])
+  }, [handleVerify])
 
   return (
     <div className="cell w-full max-w-[440px]" style={{ position: 'relative' }}>
@@ -181,7 +196,7 @@ export function LoginForm() {
                   maxLength={1}
                   value={val}
                   onChange={e => handleOtpChange(i, e.target.value)}
-                  onKeyDown={e => handleOtpKeyDown(i, e)}
+                  onKeyDown={e => handleOtpKeyDown(i, e, val)}
                   className="otp-input"
                   autoFocus={i === 0}
                   aria-label={`Dígito ${i + 1} del código`}
@@ -203,7 +218,12 @@ export function LoginForm() {
             )}
 
             <button
-              onClick={() => { setStep('email'); setOtp(Array(OTP_LENGTH).fill('')); setError('') }}
+              onClick={() => {
+                verifyingRef.current = false
+                setStep('email')
+                setOtp(Array(OTP_LENGTH).fill(''))
+                setError('')
+              }}
               className="btn"
               style={{ width: '100%', height: '36px', justifyContent: 'center' }}
             >

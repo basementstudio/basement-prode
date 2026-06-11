@@ -1,4 +1,4 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
 type OtpEmailType = 'sign-in' | 'email-verification' | 'forget-password' | 'change-email'
 
@@ -77,40 +77,33 @@ function buildHtml(otp: string, type: OtpEmailType): string {
 </html>`
 }
 
-const RESEND_SANDBOX_FROM = 'Prode 2026 <onboarding@resend.dev>'
-
-function isUnverifiedDomainError(message: string): boolean {
-  return message.includes('domain is not verified')
+function getSmtpPass(): string | undefined {
+  return process.env.SMTP_PASS?.replace(/\s/g, '')
 }
 
 export async function sendOtpEmail({ email, otp, type }: SendOtpEmailParams): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY
+  const user = process.env.SMTP_USER
+  const pass = getSmtpPass()
 
-  if (!apiKey) {
+  if (!user || !pass) {
     console.log(`[auth] OTP for ${email} (${type}): ${otp}`)
-    console.warn('[auth] RESEND_API_KEY no configurada — el código solo aparece en consola.')
+    console.warn('[auth] SMTP_USER / SMTP_PASS no configurados — el código solo aparece en consola.')
     return
   }
 
-  const from = process.env.EMAIL_FROM ?? RESEND_SANDBOX_FROM
-  const resend = new Resend(apiKey)
-  const payload = {
-    to: [email],
+  const from = process.env.EMAIL_FROM ?? `Prode 2026 <${user}>`
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: false,
+    auth: { user, pass },
+  })
+
+  await transporter.sendMail({
+    from,
+    to: email,
     subject: getSubject(type),
     html: buildHtml(otp, type),
     text: `Tu código de acceso al Prode 2026: ${otp}. Expira en 10 minutos.`,
-  }
-
-  let { error } = await resend.emails.send({ from, ...payload })
-
-  if (error && isUnverifiedDomainError(error.message) && from !== RESEND_SANDBOX_FROM) {
-    console.warn(
-      `[auth] ${from} no está verificado en Resend — reintentando con ${RESEND_SANDBOX_FROM}`,
-    )
-    ;({ error } = await resend.emails.send({ from: RESEND_SANDBOX_FROM, ...payload }))
-  }
-
-  if (error) {
-    throw new Error(error.message)
-  }
+  })
 }
