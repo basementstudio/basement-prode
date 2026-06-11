@@ -841,3 +841,52 @@ html {
 .highlight-flash {
   animation: highlight-pulse 600ms var(--ease-base) forwards;
 }
+
+/* ============================================================
+   GROUP CAROUSEL
+   ============================================================ */
+.group-carousel {
+  position: relative;
+  overflow: hidden;
+}
+
+.group-slide {
+  transition: transform var(--duration-slow) var(--ease-base), opacity var(--duration-slow) var(--ease-base);
+}
+
+.group-slide.enter {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.group-slide.exit {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.group-slide.enter-from-right {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.group-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 24px 0;
+}
+
+.group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50% !important;
+  background: var(--fg-4);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--duration-base) var(--ease-base);
+}
+
+.group-dot.active {
+  background: var(--fg-1);
+}

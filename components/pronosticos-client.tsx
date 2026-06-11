@@ -2,16 +2,20 @@
 
 import { useState, useCallback, useRef, useTransition, useEffect, useMemo } from 'react'
 import {
-  ALL_MATCHES,
-  formatMatchDate,
-  formatMatchDay,
   getMatchStatus,
   isMatchLocked,
-  isMatchPlayed,
   sortMatchesBySchedule,
   type Match,
   type MatchStatus,
 } from '@/lib/wc2026-data'
+import type { MatchDataSource } from '@/lib/wc2026/get-matches'
+import {
+  formatKickoffDate,
+  formatKickoffDay,
+  formatKickoffTime,
+  formatTimezoneLabel,
+  getUserTimezone,
+} from '@/lib/wc2026/format-local'
 import { savePrediction } from '@/lib/actions'
 import { FlagStripes } from './flag-stripes'
 
@@ -20,6 +24,8 @@ type PredMap = Record<string, { home: number; away: number }>
 
 interface Props {
   initialPredictions: PredMap
+  matches: Match[]
+  dataSource: MatchDataSource
 }
 
 function calcPoints(pred: { home: number; away: number }, result: { home: number; away: number }) {
@@ -97,28 +103,31 @@ function MatchCard({
   onSave,
   highlighted,
   now,
+  userTz,
 }: {
   match: Match
   prediction?: { home: number; away: number }
   onSave: (matchId: string, home: number, away: number) => void
   highlighted: boolean
   now: Date
+  userTz: string
 }) {
   const status = getMatchStatus(match, now)
   const locked = isMatchLocked(match, now)
-  const played = isMatchPlayed(match, now)
+  const concluded = status === 'finished'
   const [homeScore, setHomeScore] = useState(prediction?.home ?? 0)
   const [awayScore, setAwayScore] = useState(prediction?.away ?? 0)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(!!prediction)
 
   const hasPred = !!prediction
-  const points = played && hasPred && match.result
+  const points = hasPred && match.result
     ? calcPoints({ home: prediction!.home, away: prediction!.away }, match.result)
     : null
 
-  const dateLabel = formatMatchDate(match.date)
-  const dayLabel = formatMatchDay(match.date)
+  const dateLabel = formatKickoffDate(match.kickoffUtc, userTz)
+  const dayLabel = formatKickoffDay(match.kickoffUtc, userTz)
+  const timeLabel = formatKickoffTime(match.kickoffUtc, userTz)
 
   async function handleSave(h: number, a: number) {
     if (locked) return
@@ -159,9 +168,9 @@ function MatchCard({
   const cardClass = [
     'match-card scroll-target',
     highlighted ? 'highlighted' : '',
-    played ? 'played' : '',
+    concluded ? 'played' : '',
     status === 'live' ? 'live' : '',
-    locked && !played ? 'locked' : '',
+    locked && !concluded ? 'locked' : '',
   ].filter(Boolean).join(' ')
 
   return (
@@ -176,7 +185,7 @@ function MatchCard({
         justifyContent: 'space-between',
         padding: '8px 16px',
         borderBottom: '1px solid var(--fg-4)',
-        background: played ? 'rgba(235,235,235,0.02)' : status === 'live' ? 'rgba(255,77,0,0.03)' : 'transparent',
+        background: concluded ? 'rgba(235,235,235,0.02)' : status === 'live' ? 'rgba(255,77,0,0.03)' : 'transparent',
       }}>
         <div className="mono-label" style={{ color: 'var(--fg-3)', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span>GRUPO {match.group}</span>
@@ -185,7 +194,7 @@ function MatchCard({
           <span style={{ color: 'var(--fg-4)' }}>·</span>
           <span>{dayLabel}</span>
           <span style={{ color: 'var(--fg-4)' }}>·</span>
-          <span>{match.time}</span>
+          <span>{timeLabel}</span>
           <span style={{ color: 'var(--fg-4)' }}>·</span>
           <span style={{ color: 'var(--fg-4)' }}>{match.venue}</span>
         </div>
@@ -215,7 +224,9 @@ function MatchCard({
                   </span>
                 </div>
               ) : status === 'live' ? (
-                <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>Partido en curso</span>
+                <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
+                  Partido en curso{match.elapsed != null ? ` · ${match.elapsed}'` : ''}
+                </span>
               ) : (
                 <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Pronósticos cerrados</span>
               )}
@@ -234,7 +245,7 @@ function MatchCard({
                   )}
                 </div>
               )}
-              {!hasPred && played && (
+              {!hasPred && concluded && (
                 <span className="mono-label" style={{ color: 'var(--fg-4)' }}>Sin pronóstico</span>
               )}
             </div>
@@ -259,43 +270,43 @@ function MatchCard({
   )
 }
 
-function DateHeader({ date }: { date: string }) {
+function GroupHeader({ group }: { group: string }) {
   return (
     <div style={{
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      padding: '12px 16px',
+      padding: '16px',
       borderBottom: '1px solid var(--fg-4)',
       borderTop: '1px solid var(--fg-4)',
-      marginTop: '32px',
       background: 'rgba(235,235,235,0.02)',
     }}>
-      <span className="mono-label" style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
-        {formatMatchDay(date)}
+      <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--fg-1)', letterSpacing: '-0.02em' }}>
+        GRUPO {group}
       </span>
-      <span style={{ color: 'var(--fg-4)' }}>·</span>
-      <span className="mono-label" style={{ color: 'var(--fg-3)' }}>{formatMatchDate(date)}</span>
       <div style={{ flex: 1, height: '1px', background: 'var(--fg-4)' }} />
     </div>
   )
 }
 
-export function PronosticosClient({ initialPredictions }: Props) {
+export function PronosticosClient({ initialPredictions, matches, dataSource }: Props) {
   const [predictions, setPredictions] = useState<PredMap>(initialPredictions)
   const [filter, setFilter] = useState<Filter>('por-jugar')
-  const [highlightedId, setHighlightedId] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
   const [now, setNow] = useState(() => new Date())
+  const [userTz] = useState(getUserTimezone)
+  const [currentGroupIndex, setCurrentGroupIndex] = useState(0)
+  const [slideState, setSlideState] = useState<'enter' | 'exit' | 'entering'>('enter')
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(interval)
   }, [])
 
+  /** Siempre: por jugar → en vivo → concluidos, cronológico dentro de cada bloque. */
   const sortedMatches = useMemo(
-    () => sortMatchesBySchedule(ALL_MATCHES, now),
-    [now],
+    () => sortMatchesBySchedule(matches, now),
+    [matches, now],
   )
 
   const upcoming = useMemo(
@@ -330,43 +341,63 @@ export function PronosticosClient({ initialPredictions }: Props) {
     }
   }, [filter, upcoming, live, finished, sortedMatches])
 
-  const matchesByDate = useMemo(() => {
-    const groups: { date: string; matches: Match[] }[] = []
+  const matchesByGroup = useMemo(() => {
+    const groups: { group: string; matches: Match[] }[] = []
     for (const match of filteredMatches) {
-      const last = groups[groups.length - 1]
-      if (last?.date === match.date) {
-        last.matches.push(match)
+      const existing = groups.find(g => g.group === match.group)
+      if (existing) {
+        existing.matches.push(match)
       } else {
-        groups.push({ date: match.date, matches: [match] })
+        groups.push({ group: match.group, matches: [match] })
       }
     }
-    return groups
+    return groups.sort((a, b) => a.group.localeCompare(b.group))
   }, [filteredMatches])
+
+  useEffect(() => {
+    if (matchesByGroup.length === 0) return
+    const currentGroup = matchesByGroup[currentGroupIndex]
+    if (!currentGroup) return
+    const allSaved = currentGroup.matches.every(m => predictions[m.id])
+    if (allSaved && currentGroupIndex < matchesByGroup.length - 1) {
+      const timer = setTimeout(() => {
+        setSlideState('exit')
+        setTimeout(() => {
+          setCurrentGroupIndex(prev => prev + 1)
+          setSlideState('entering')
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              setSlideState('enter')
+            })
+          })
+        }, 400)
+      }, 800)
+      return () => clearTimeout(timer)
+    }
+  }, [predictions, matchesByGroup, currentGroupIndex])
+
+  useEffect(() => {
+    if (currentGroupIndex >= matchesByGroup.length) {
+      setCurrentGroupIndex(Math.max(0, matchesByGroup.length - 1))
+      setSlideState('enter')
+    }
+  }, [matchesByGroup, currentGroupIndex])
 
   const handleSave = useCallback(async (matchId: string, home: number, away: number) => {
     startTransition(async () => {
-      await savePrediction(matchId, home, away)
+      await savePrediction(matchId, home, away, Date.now())
       setPredictions(prev => ({ ...prev, [matchId]: { home, away } }))
-
-      const nextMatch = upcoming.find(m => m.id !== matchId && !predictions[m.id])
-      if (nextMatch) {
-        setHighlightedId(nextMatch.id)
-        setTimeout(() => {
-          const el = document.getElementById(`match-${nextMatch.id}`)
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          setTimeout(() => setHighlightedId(null), 1200)
-        }, 100)
-      }
     })
-  }, [upcoming, predictions])
+  }, [])
 
   const progress = upcoming.length > 0 ? (savedCount / upcoming.length) * 100 : 100
+  const tzLabel = formatTimezoneLabel(userTz)
 
   const filterOptions: { key: Filter; label: string; count: number }[] = [
     { key: 'por-jugar', label: 'Por jugar', count: upcoming.length },
     { key: 'en-vivo', label: 'En vivo', count: live.length },
     { key: 'concluidos', label: 'Concluidos', count: finished.length },
-    { key: 'todos', label: 'Todos', count: ALL_MATCHES.length },
+    { key: 'todos', label: 'Todos', count: matches.length },
   ]
 
   return (
@@ -378,13 +409,17 @@ export function PronosticosClient({ initialPredictions }: Props) {
             <span className="sep"> — </span>
             FASE DE GRUPOS
             <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
-            <span>{ALL_MATCHES.length} PARTIDOS</span>
+            <span>{matches.length} PARTIDOS</span>
+            <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
+            <span style={{ color: dataSource === 'api' ? 'var(--color-contrast)' : 'var(--fg-3)' }}>
+              {dataSource === 'api' ? 'LIVE API' : 'DATOS LOCALES'}
+            </span>
           </div>
           <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px' }}>
             Cargá tus pronósticos.
           </h1>
           <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5' }}>
-            Poné el marcador de cada partido antes del pitido inicial. Al completar uno, saltás solo al siguiente. 3 puntos si acertás el ganador, ×2 si clavás el resultado exacto.
+            Poné el marcador antes del pitido inicial. Horarios en tu zona ({tzLabel}). 3 puntos si acertás el ganador, ×2 si clavás el resultado exacto.
           </p>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '24px' }}>
@@ -393,7 +428,7 @@ export function PronosticosClient({ initialPredictions }: Props) {
             <span style={{ fontSize: '16px', color: 'var(--fg-3)', fontWeight: 400 }}> / {upcoming.length} por jugar</span>
           </div>
           <div className="mono-label" style={{ color: 'var(--fg-3)', marginTop: '4px' }}>
-            {live.length > 0 ? `${live.length} en vivo · ` : ''}{finished.length}/{ALL_MATCHES.length} concluidos
+            {live.length > 0 ? `${live.length} en vivo · ` : ''}{finished.length}/{matches.length} concluidos
           </div>
         </div>
       </div>
@@ -433,24 +468,106 @@ export function PronosticosClient({ initialPredictions }: Props) {
             {filter === 'en-vivo' ? 'No hay partidos en vivo ahora' : 'No hay partidos en esta categoría'}
           </span>
         </div>
+      ) : matchesByGroup.length === 0 ? (
+        <div style={{
+          border: '1px solid var(--fg-4)',
+          padding: '48px 24px',
+          textAlign: 'center',
+        }}>
+          <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
+            No hay partidos en esta categoría
+          </span>
+        </div>
       ) : (
-        matchesByDate.map(({ date, matches }) => (
-          <div key={date}>
-            <DateHeader date={date} />
-            <div style={{ border: '1px solid var(--fg-4)', borderTop: 'none' }}>
-              {matches.map(match => (
-                <MatchCard
-                  key={match.id}
-                  match={match}
-                  prediction={predictions[match.id]}
-                  onSave={handleSave}
-                  highlighted={highlightedId === match.id}
-                  now={now}
-                />
-              ))}
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <button
+              className="btn"
+              onClick={() => {
+                if (currentGroupIndex <= 0 || slideState !== 'enter') return
+                setSlideState('exit')
+                setTimeout(() => {
+                  setCurrentGroupIndex(prev => prev - 1)
+                  setSlideState('entering')
+                  requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                      setSlideState('enter')
+                    })
+                  })
+                }, 400)
+              }}
+              disabled={currentGroupIndex <= 0 || slideState !== 'enter'}
+            >
+              ← PREV
+            </button>
+            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
+              {currentGroupIndex + 1} / {matchesByGroup.length}
+            </span>
+            <button
+              className="btn"
+              onClick={() => {
+                if (currentGroupIndex >= matchesByGroup.length - 1 || slideState !== 'enter') return
+                setSlideState('exit')
+                setTimeout(() => {
+                  setCurrentGroupIndex(prev => prev + 1)
+                  setSlideState('entering')
+                  requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                      setSlideState('enter')
+                    })
+                  })
+                }, 400)
+              }}
+              disabled={currentGroupIndex >= matchesByGroup.length - 1 || slideState !== 'enter'}
+            >
+              NEXT →
+            </button>
+          </div>
+          <div className="group-carousel">
+            <div className={`group-slide ${slideState === 'exit' ? 'exit' : slideState === 'entering' ? 'enter-from-right' : 'enter'}`}>
+              {matchesByGroup[currentGroupIndex] && (
+                <>
+                  <GroupHeader group={matchesByGroup[currentGroupIndex].group} />
+                  <div style={{ border: '1px solid var(--fg-4)', borderTop: 'none' }}>
+                    {matchesByGroup[currentGroupIndex].matches.map(match => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        prediction={predictions[match.id]}
+                        onSave={handleSave}
+                        highlighted={false}
+                        now={now}
+                        userTz={userTz}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        ))
+          <div className="group-dots">
+            {matchesByGroup.map((g, i) => (
+              <button
+                key={g.group}
+                className={`group-dot${i === currentGroupIndex ? ' active' : ''}`}
+                onClick={() => {
+                  if (i === currentGroupIndex || slideState !== 'enter') return
+                  setSlideState('exit')
+                  setTimeout(() => {
+                    setCurrentGroupIndex(i)
+                    setSlideState('entering')
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => {
+                        setSlideState('enter')
+                      })
+                    })
+                  }, 400)
+                }}
+                aria-label={`Grupo ${g.group}`}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

@@ -3,7 +3,8 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { predictions, userProfiles, user } from '@/lib/db/schema'
-import { getMatchById, isMatchLocked } from '@/lib/wc2026-data'
+import { isMatchLocked } from '@/lib/wc2026-data'
+import { getMatchByIdAsync, getGroupStageMatches } from '@/lib/wc2026/get-matches'
 import { and, eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
@@ -25,12 +26,19 @@ export async function getPredictions(): Promise<Record<string, { home: number; a
   return map
 }
 
-export async function savePrediction(matchId: string, homeScore: number, awayScore: number) {
+export async function savePrediction(
+  matchId: string,
+  homeScore: number,
+  awayScore: number,
+  clientNowMs?: number,
+) {
   const userId = await getUserId()
 
-  const match = getMatchById(matchId)
+  const match = await getMatchByIdAsync(matchId)
   if (!match) throw new Error('Partido no encontrado')
-  if (isMatchLocked(match)) throw new Error('Este partido ya empezó y no se puede editar')
+
+  const now = clientNowMs != null ? new Date(clientNowMs) : new Date()
+  if (isMatchLocked(match, now)) throw new Error('Este partido ya empezó y no se puede editar')
 
   const existing = await db
     .select()
@@ -62,8 +70,8 @@ export async function getLeaderboard() {
   const allProfiles = await db.select().from(userProfiles)
 
   // Only score matches that have a real result (from data file)
-  const { ALL_MATCHES, isMatchPlayed } = await import('@/lib/wc2026-data')
-  const playedMatches = ALL_MATCHES.filter(m => m.result && isMatchPlayed(m))
+  const allMatches = await getGroupStageMatches()
+  const playedMatches = allMatches.filter(m => m.result)
 
   const scores: Record<string, number> = {}
   for (const u of allUsers) {
