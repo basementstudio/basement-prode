@@ -19,6 +19,8 @@ export interface Match {
   home: Team
   away: Team
   result?: { home: number; away: number }
+  /** Marcador parcial mientras el partido está en curso (API goals). */
+  liveScore?: { home: number; away: number }
   /** Código corto de API-Football: NS, 1H, HT, FT, etc. */
   statusShort?: string
   elapsed?: number | null

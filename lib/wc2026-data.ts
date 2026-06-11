@@ -42,6 +42,15 @@ export function getMatchStatus(match: Match, now: Date = new Date()): MatchStatu
   return 'finished'
 }
 
+export function getMatchDisplayScore(
+  match: Match,
+  status: MatchStatus,
+): { home: number; away: number } | undefined {
+  if (match.result) return match.result
+  if (match.liveScore && (status === 'live' || status === 'finished')) return match.liveScore
+  return undefined
+}
+
 export function isMatchLocked(match: Match, now: Date = new Date()): boolean {
   return getMatchStatus(match, now) !== 'upcoming'
 }

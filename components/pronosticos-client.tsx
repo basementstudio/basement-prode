@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useCallback, useRef, useTransition, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
+  getMatchDisplayScore,
   getMatchStatus,
   isMatchLocked,
   sortMatchesBySchedule,
@@ -121,6 +123,7 @@ function MatchCard({
   const [saved, setSaved] = useState(!!prediction)
 
   const hasPred = !!prediction
+  const displayScore = getMatchDisplayScore(match, status)
   const points = hasPred && match.result
     ? calcPoints({ home: prediction!.home, away: prediction!.away }, match.result)
     : null
@@ -213,20 +216,22 @@ function MatchCard({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0', padding: '0 20px' }}>
           {locked ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              {match.result ? (
+              {displayScore ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>
-                    {match.result.home}
+                    {displayScore.home}
                   </span>
                   <span style={{ fontSize: '24px', color: 'var(--fg-4)' }}>:</span>
                   <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>
-                    {match.result.away}
+                    {displayScore.away}
                   </span>
                 </div>
               ) : status === 'live' ? (
                 <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
                   Partido en curso{match.elapsed != null ? ` · ${match.elapsed}'` : ''}
                 </span>
+              ) : concluded ? (
+                <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Resultado pendiente</span>
               ) : (
                 <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Pronósticos cerrados</span>
               )}
@@ -290,6 +295,7 @@ function GroupHeader({ group }: { group: string }) {
 }
 
 export function PronosticosClient({ initialPredictions, matches, dataSource }: Props) {
+  const router = useRouter()
   const [predictions, setPredictions] = useState<PredMap>(initialPredictions)
   const [filter, setFilter] = useState<Filter>('por-jugar')
   const [, startTransition] = useTransition()
@@ -302,6 +308,11 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
     const interval = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    const refresh = setInterval(() => router.refresh(), 60_000)
+    return () => clearInterval(refresh)
+  }, [router])
 
   /** Siempre: por jugar → en vivo → concluidos, cronológico dentro de cada bloque. */
   const sortedMatches = useMemo(

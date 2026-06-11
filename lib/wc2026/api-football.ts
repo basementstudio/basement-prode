@@ -13,6 +13,11 @@ interface ApiFixtureResponse {
   errors?: Record<string, string>
 }
 
+interface ApiScoreLine {
+  home: number | null
+  away: number | null
+}
+
 interface ApiFixtureItem {
   fixture: {
     id: number
@@ -27,7 +32,13 @@ interface ApiFixtureItem {
     home: { name: string; code: string | null }
     away: { name: string; code: string | null }
   }
-  goals: { home: number | null; away: number | null }
+  goals: ApiScoreLine
+  score?: {
+    halftime?: ApiScoreLine
+    fulltime?: ApiScoreLine
+    extratime?: ApiScoreLine
+    penalty?: ApiScoreLine
+  }
 }
 
 function isGroupStageRound(round: string | null): boolean {
@@ -42,6 +53,29 @@ function utcDateTimeParts(iso: string): { date: string; time: string } {
   return { date, time }
 }
 
+function parseScoreLine(line?: ApiScoreLine | null): { home: number; away: number } | undefined {
+  if (!line || line.home == null || line.away == null) return undefined
+  return { home: line.home, away: line.away }
+}
+
+function extractFinalResult(item: ApiFixtureItem): { home: number; away: number } | undefined {
+  const statusShort = item.fixture.status.short
+  if (!FINISHED_STATUSES.has(statusShort)) return undefined
+
+  return (
+    parseScoreLine(item.score?.fulltime)
+    ?? parseScoreLine(item.goals)
+    ?? parseScoreLine(item.score?.extratime)
+    ?? parseScoreLine(item.score?.penalty)
+  )
+}
+
+function extractLiveScore(item: ApiFixtureItem): { home: number; away: number } | undefined {
+  const statusShort = item.fixture.status.short
+  if (!LIVE_STATUSES.has(statusShort)) return undefined
+  return parseScoreLine(item.goals)
+}
+
 function transformFixture(item: ApiFixtureItem): Match | null {
   if (!isGroupStageRound(item.league.round)) return null
 
@@ -52,15 +86,8 @@ function transformFixture(item: ApiFixtureItem): Match | null {
   const group = resolveGroup(homeCode, awayCode)
   const { date, time } = utcDateTimeParts(item.fixture.date)
   const statusShort = item.fixture.status.short
-
-  let result: { home: number; away: number } | undefined
-  if (
-    FINISHED_STATUSES.has(statusShort) &&
-    item.goals.home !== null &&
-    item.goals.away !== null
-  ) {
-    result = { home: item.goals.home, away: item.goals.away }
-  }
+  const result = extractFinalResult(item)
+  const liveScore = result ? undefined : extractLiveScore(item)
 
   const venue = [item.fixture.venue.name, item.fixture.venue.city]
     .filter(Boolean)
@@ -77,6 +104,7 @@ function transformFixture(item: ApiFixtureItem): Match | null {
     home,
     away,
     result,
+    liveScore,
     statusShort,
     elapsed: item.fixture.status.elapsed,
   }
