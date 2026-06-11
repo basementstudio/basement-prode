@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex flex-col">
       <Sysbar />
-      <SiteHeader avatarUrl={profile.avatarUrl} displayName={profile.displayName || profile.name} />
+      <SiteHeader avatarUrl={profile.avatarUrl} displayName={profile.resolvedName} />
       <main className="flex-1">
         {children}
       </main>

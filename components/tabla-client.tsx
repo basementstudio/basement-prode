@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserAvatar } from '@/components/user-avatar'
 import { updateProfile, updateAvatar } from '@/lib/actions'
@@ -21,6 +21,7 @@ interface MyProfile {
   email: string
   name: string
   displayName: string | null
+  resolvedName: string
   avatarUrl: string | null
 }
 
@@ -100,11 +101,15 @@ export function TablaClient({ players, myProfile }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [editingName, setEditingName] = useState(false)
-  const [nameValue, setNameValue] = useState(myProfile.displayName || myProfile.name)
+  const [nameValue, setNameValue] = useState(myProfile.resolvedName)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(myProfile.avatarUrl)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isUploading, startUpload] = useTransition()
+
+  useEffect(() => {
+    setNameValue(myProfile.resolvedName)
+  }, [myProfile.resolvedName])
 
   const myRank = players.find(p => p.id === myProfile.userId)?.rank
   const myPoints = players.find(p => p.id === myProfile.userId)?.points ?? 0
@@ -234,10 +239,6 @@ export function TablaClient({ players, myProfile }: Props) {
                 <span className="mono-label" style={{ color: 'var(--fg-4)', fontSize: '10px' }}>EDITAR</span>
               </button>
             )}
-
-            <div className="mono-label profile-email" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>
-              {myProfile.email}
-            </div>
 
             <button
               className="btn"

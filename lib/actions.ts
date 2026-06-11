@@ -12,6 +12,7 @@ import { and, eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
+import { resolveDisplayName } from '@/lib/display-name'
 
 async function getUserId() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -119,7 +120,11 @@ export async function getLeaderboard() {
     .map(u => ({
       id: u.id,
       email: u.email,
-      name: profileMap[u.id]?.displayName || u.name,
+      name: resolveDisplayName({
+        displayName: profileMap[u.id]?.displayName,
+        name: u.name,
+        email: u.email,
+      }),
       avatarUrl: profileMap[u.id]?.avatarUrl || null,
       points: scores[u.id] || 0,
     }))
@@ -187,11 +192,20 @@ export async function getMyProfile() {
     .from(userProfiles)
     .where(eq(userProfiles.userId, userId))
     .limit(1)
+  const email = session!.user.email
+  const authName = session!.user.name
+  const storedDisplayName = profile[0]?.displayName || null
+
   return {
     userId,
-    email: session!.user.email,
-    name: session!.user.name,
-    displayName: profile[0]?.displayName || null,
+    email,
+    name: authName,
+    displayName: storedDisplayName,
+    resolvedName: resolveDisplayName({
+      displayName: storedDisplayName,
+      name: authName,
+      email,
+    }),
     avatarUrl: profile[0]?.avatarUrl || null,
   }
 }
