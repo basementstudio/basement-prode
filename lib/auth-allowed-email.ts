@@ -7,5 +7,5 @@ export function isAllowedLoginEmail(email: string): boolean {
 }
 
 export function allowedLoginEmailError(): string {
-  return `Solo se aceptan mails @${ALLOWED_DOMAIN}.`
+  return `Only @${ALLOWED_DOMAIN} emails are accepted.`
 }

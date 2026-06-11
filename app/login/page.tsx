@@ -14,16 +14,16 @@ export default async function LoginPage() {
       <div className="sysbar hidden md:flex">
         <div className="sysbar-item accent">
           <span className="sysbar-dot" aria-hidden="true" />
-          PRODE.BASEMENT.STUDIO
+          PRODE/BASEMENT
         </div>
         <div className="sysbar-item">/</div>
-        <div className="sysbar-item">MUNDIAL 2026</div>
+        <div className="sysbar-item">WORLD CUP 2026</div>
         <div className="sysbar-item">·</div>
-        <div className="sysbar-item">FASE DE GRUPOS</div>
+        <div className="sysbar-item">GROUP STAGE</div>
         <div className="flex-1" />
-        <div className="sysbar-item" style={{ borderRight:'none', borderLeft:'1px solid var(--fg-4)' }}>SIN SESIÓN</div>
-        <div className="sysbar-item" style={{ borderRight:'none', borderLeft:'1px solid var(--fg-4)' }}>3 PTS GANADOR</div>
-        <div className="sysbar-item" style={{ borderRight:'none', borderLeft:'1px solid var(--fg-4)' }}>×2 EXACTO</div>
+        <div className="sysbar-item" style={{ borderRight:'none', borderLeft:'1px solid var(--fg-4)' }}>NOT SIGNED IN</div>
+        <div className="sysbar-item" style={{ borderRight:'none', borderLeft:'1px solid var(--fg-4)' }}>3 PTS WINNER</div>
+        <div className="sysbar-item" style={{ borderRight:'none', borderLeft:'1px solid var(--fg-4)' }}>×2 EXACT</div>
       </div>
 
       <main className="flex-1 flex items-center justify-center px-4 py-16">

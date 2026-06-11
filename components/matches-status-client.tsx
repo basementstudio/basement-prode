@@ -25,15 +25,15 @@ interface Props {
 const PAGE_COPY: Record<StatusFilter, { num: string; title: string; description: string; empty: string }> = {
   live: {
     num: '03',
-    title: 'Partidos en vivo.',
-    description: 'Seguí los partidos que se están jugando ahora con marcador en tiempo real.',
-    empty: 'No hay partidos en vivo ahora',
+    title: 'Live matches.',
+    description: 'Follow matches in progress with real-time scores.',
+    empty: 'No live matches right now',
   },
   finished: {
     num: '04',
-    title: 'Partidos concluidos.',
-    description: 'Resultados finales y cómo te fue con tus pronósticos.',
-    empty: 'Todavía no hay partidos concluidos',
+    title: 'Finished matches.',
+    description: 'Final results and how your picks performed.',
+    empty: 'No finished matches yet',
   },
 }
 
@@ -71,19 +71,19 @@ export function MatchesStatusClient({ initialPredictions, matches, dataSource, f
       <div className="eyebrow" style={{ marginBottom: '8px' }}>
         <span className="num">{copy.num}</span>
         <span className="sep"> — </span>
-        FASE DE GRUPOS
+        GROUP STAGE
         <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
-        <span>{filteredMatches.length} PARTIDOS</span>
+        <span>{filteredMatches.length} MATCHES</span>
         <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
         <span style={{ color: dataSource === 'worldcup26' ? 'var(--color-contrast)' : 'var(--fg-3)' }}>
-          {dataSource === 'worldcup26' ? 'DATOS EN VIVO' : dataSource === 'api-football' ? 'API-FOOTBALL' : 'DATOS LOCALES'}
+          {dataSource === 'worldcup26' ? 'LIVE DATA' : dataSource === 'api-football' ? 'API-FOOTBALL' : 'LOCAL DATA'}
         </span>
       </div>
       <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px' }}>
         {copy.title}
       </h1>
       <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5', marginBottom: '32px' }}>
-        {copy.description} Horarios en {tzLabel}.
+        {copy.description} Times in {tzLabel}.
       </p>
 
       {filteredMatches.length === 0 ? (

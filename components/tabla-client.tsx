@@ -31,9 +31,9 @@ interface Props {
 }
 
 const PRIZES: Record<number, { label: string; desc: string }> = {
-  1: { label: '1°', desc: 'Buzo basement' },
-  2: { label: '2°', desc: 'Botella basement' },
-  3: { label: '3°', desc: 'Remera basement' },
+  1: { label: '1st', desc: 'Basement hoodie' },
+  2: { label: '2nd', desc: 'Basement bottle' },
+  3: { label: '3rd', desc: 'Basement tee' },
 }
 
 function PlayerIdentity({
@@ -91,7 +91,7 @@ function PodiumCell({
           </div>
         </div>
       ) : (
-        <div className="mono-label" style={{ color: 'var(--fg-4)' }}>Sin participantes aún</div>
+        <div className="mono-label" style={{ color: 'var(--fg-4)' }}>No players yet</div>
       )}
     </div>
   )
@@ -141,7 +141,7 @@ export function TablaClient({ players, myProfile }: Props) {
         await updateAvatar(dataUrl)
         router.refresh()
       } catch (err) {
-        setUploadError(err instanceof Error ? err.message : 'No se pudo subir la foto')
+        setUploadError(err instanceof Error ? err.message : 'Could not upload photo')
         setAvatarPreview(myProfile.avatarUrl)
       }
     })
@@ -158,24 +158,24 @@ export function TablaClient({ players, myProfile }: Props) {
             <span className="sep"> — </span>
             LEADERBOARD
             <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
-            ACTUALIZADO MD1
+            UPDATED MD1
           </div>
           <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px' }}>
-            La tabla.
+            The leaderboard.
           </h1>
           <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '480px', lineHeight: '1.5' }}>
-            Ranking general del prode. El que termine 1° se lleva la merch de basement. Los puntos se suman a medida que se juegan los partidos.
+            Overall pool ranking. First place wins basement merch. Points add up as matches are played.
           </p>
         </div>
         <div className="tabla-header-stats">
           <div className="tabla-stat-block">
-            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>JUGADORES</span>
+            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>PLAYERS</span>
             <span className="tabla-stat-value">{players.length}</span>
           </div>
           {myRank && (
             <div className="tabla-stat-block">
-              <span className="mono-label" style={{ color: 'var(--fg-3)' }}>TU PUESTO</span>
-              <span className="tabla-stat-value-accent">{myRank}°</span>
+              <span className="mono-label" style={{ color: 'var(--fg-3)' }}>YOUR RANK</span>
+              <span className="tabla-stat-value-accent">{myRank}</span>
             </div>
           )}
         </div>
@@ -189,14 +189,14 @@ export function TablaClient({ players, myProfile }: Props) {
 
         <div className={cn('tabla-profile-grid', !myRank && 'tabla-profile-grid-no-rank')}>
           <div className="tabla-profile-info">
-            <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>— TU PERFIL</div>
+            <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>— YOUR PROFILE</div>
 
             <button
               type="button"
               className="mb-4 cursor-pointer transition-opacity disabled:cursor-wait disabled:opacity-60 hover:enabled:opacity-80"
               onClick={handleAvatarSelect}
               disabled={isUploading}
-              aria-label="Subir foto de perfil"
+              aria-label="Upload profile photo"
             >
               <UserAvatar name={nameValue} imageUrl={avatarPreview} size="lg" highlight />
             </button>
@@ -233,10 +233,10 @@ export function TablaClient({ players, myProfile }: Props) {
                 type="button"
                 className="profile-name-edit"
                 onClick={() => setEditingName(true)}
-                title="Clic para editar nombre"
+                title="Click to edit name"
               >
                 <span style={{ fontWeight: 600, fontSize: '18px', color: 'var(--fg-1)' }}>{nameValue}</span>
-                <span className="mono-label" style={{ color: 'var(--fg-4)', fontSize: '10px' }}>EDITAR</span>
+                <span className="mono-label" style={{ color: 'var(--fg-4)', fontSize: '10px' }}>EDIT</span>
               </button>
             )}
 
@@ -246,7 +246,7 @@ export function TablaClient({ players, myProfile }: Props) {
               onClick={handleAvatarSelect}
               disabled={isUploading}
             >
-              {isUploading ? 'Subiendo…' : 'Subir foto'}
+              {isUploading ? 'Uploading…' : 'Upload photo'}
             </button>
 
             {uploadError && (
@@ -258,12 +258,12 @@ export function TablaClient({ players, myProfile }: Props) {
 
           <div className="tabla-profile-stat">
             <span className="tabla-profile-stat-value">{myPoints}</span>
-            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>PUNTOS</span>
+            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>POINTS</span>
           </div>
           {myRank && (
             <div className="tabla-profile-stat">
-              <span className="tabla-profile-stat-value-accent">{myRank}°</span>
-              <span className="mono-label" style={{ color: 'var(--fg-3)' }}>PUESTO</span>
+              <span className="tabla-profile-stat-value-accent">{myRank}</span>
+              <span className="mono-label" style={{ color: 'var(--fg-3)' }}>RANK</span>
             </div>
           )}
         </div>
@@ -272,7 +272,7 @@ export function TablaClient({ players, myProfile }: Props) {
       {players.length >= 1 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '12px' }}>
-            — PODIO
+            — PODIUM
           </div>
           <div className="tabla-podium-grid">
             {[1, 2, 3].map(rank => (
@@ -289,15 +289,15 @@ export function TablaClient({ players, myProfile }: Props) {
 
       <div>
         <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '12px' }}>
-          — RANKING COMPLETO
+          — FULL RANKING
         </div>
         <div className="cell tabla-table-wrap">
           <table className="dtable">
             <thead>
               <tr>
                 <th style={{ width: '48px' }}>POS</th>
-                <th>JUGADOR</th>
-                <th>PREMIO</th>
+                <th>PLAYER</th>
+                <th>PRIZE</th>
                 <th style={{ textAlign: 'right' }}>PTS</th>
               </tr>
             </thead>
@@ -344,7 +344,7 @@ export function TablaClient({ players, myProfile }: Props) {
               {players.length === 0 && (
                 <tr>
                   <td colSpan={4} style={{ textAlign: 'center', color: 'var(--fg-4)', padding: '32px' }}>
-                    <span className="mono-label">Sin participantes aún</span>
+                    <span className="mono-label">No players yet</span>
                   </td>
                 </tr>
               )}

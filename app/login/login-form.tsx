@@ -10,10 +10,10 @@ const OTP_LENGTH = 6
 type Step = 'email' | 'otp'
 
 function otpErrorMessage(error: { message?: string; code?: string } | null | undefined): string {
-  if (!error) return 'Código incorrecto o expirado. Pedí uno nuevo.'
-  if (error.code === 'OTP_EXPIRED') return 'El código expiró. Pedí uno nuevo.'
-  if (error.code === 'TOO_MANY_ATTEMPTS') return 'Demasiados intentos. Pedí un código nuevo.'
-  return error.message || 'Código incorrecto o expirado. Pedí uno nuevo.'
+  if (!error) return 'Incorrect or expired code. Request a new one.'
+  if (error.code === 'OTP_EXPIRED') return 'Code expired. Request a new one.'
+  if (error.code === 'TOO_MANY_ATTEMPTS') return 'Too many attempts. Request a new code.'
+  return error.message || 'Incorrect or expired code. Request a new one.'
 }
 
 export function LoginForm() {
@@ -51,7 +51,7 @@ export function LoginForm() {
         router.refresh()
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error al verificar. Intentá de nuevo.'
+      const message = err instanceof Error ? err.message : 'Verification failed. Try again.'
       setError(message)
     } finally {
       setLoading(false)
@@ -77,7 +77,7 @@ export function LoginForm() {
       setSent(true)
       setStep('otp')
     } catch (err: any) {
-      setError(err?.message || 'No se pudo enviar el código. Intentá de nuevo.')
+      setError(err?.message || 'Could not send the code. Try again.')
     } finally {
       setLoading(false)
     }
@@ -133,27 +133,27 @@ export function LoginForm() {
       <div style={{ padding: '32px 32px 28px' }}>
         {/* Eyebrow */}
         <div className="eyebrow" style={{ marginBottom: '20px' }}>
-          <span className="num">PRODE/2026</span>
+          <span className="num">PRODE/BASEMENT</span>
           <span className="sep"> — </span>
-          ACCESO
+          ACCESS
           <span style={{ color: 'var(--fg-4)', margin: '0 6px' }}>·</span>
-          SOLO CREW
+          CREW ONLY
         </div>
 
         {/* Heading */}
         <h1 style={{ fontSize: '32px', fontWeight: 700, marginBottom: '12px', letterSpacing: '-0.02em' }}>
-          {step === 'email' ? 'Entrá al prode.' : 'Ingresá el código.'}
+          {step === 'email' ? 'Enter the pool.' : 'Enter the code.'}
         </h1>
         <p style={{ color: 'var(--fg-3)', fontSize: '15px', lineHeight: '1.5', marginBottom: '28px' }}>
           {step === 'email'
-            ? `Pronosticá la fase de grupos del Mundial 2026. Acceso solo con tu mail de basement — sin contraseña, te mandamos un código.`
-            : `Mandamos un código de ${OTP_LENGTH} dígitos a ${email}. Ingresalo para entrar.`}
+            ? `Pick the group stage of World Cup 2026. Basement email only — no password, we send you a code.`
+            : `We sent a ${OTP_LENGTH}-digit code to ${email}. Enter it to sign in.`}
         </p>
 
         {step === 'email' ? (
           <form onSubmit={handleSendCode}>
             <label className="mono-label" style={{ display: 'block', color: 'var(--fg-3)', marginBottom: '8px' }}>
-              Tu mail de basement
+              Your basement email
             </label>
             <input
               type="email"
@@ -177,14 +177,14 @@ export function LoginForm() {
               className="btn solid"
               style={{ width: '100%', height: '44px', fontSize: '12px', justifyContent: 'center', gap: '10px' }}
             >
-              {loading ? 'Enviando...' : 'Enviar código'}
+              {loading ? 'Sending...' : 'Send code'}
               {!loading && <span className="btn-arrow">→</span>}
             </button>
           </form>
         ) : (
           <div>
             <label className="mono-label" style={{ display: 'block', color: 'var(--fg-3)', marginBottom: '12px' }}>
-              Código de {OTP_LENGTH} dígitos
+              {OTP_LENGTH}-digit code
             </label>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }} onPaste={handleOtpPaste}>
               {otp.map((val, i) => (
@@ -199,7 +199,7 @@ export function LoginForm() {
                   onKeyDown={e => handleOtpKeyDown(i, e, val)}
                   className="otp-input"
                   autoFocus={i === 0}
-                  aria-label={`Dígito ${i + 1} del código`}
+                  aria-label={`Code digit ${i + 1}`}
                   disabled={loading}
                 />
               ))}
@@ -213,7 +213,7 @@ export function LoginForm() {
 
             {loading && (
               <p className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>
-                Verificando...
+                Verifying...
               </p>
             )}
 
@@ -227,7 +227,7 @@ export function LoginForm() {
               className="btn"
               style={{ width: '100%', height: '36px', justifyContent: 'center' }}
             >
-              Cambiar email o reenviar código
+              Change email or resend code
             </button>
           </div>
         )}
@@ -244,13 +244,13 @@ export function LoginForm() {
         <div style={{ width: '2px', alignSelf: 'stretch', background: 'var(--color-contrast)', flexShrink: 0 }} />
         <div>
           <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
-            modo interno · cualquier dirección{' '}
+            internal mode · any{' '}
           </span>
           <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
             @basement.studio
           </span>
           <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
-            {' '}entra — el código llega a tu mail.
+            {' '}address works — the code arrives in your inbox.
           </span>
         </div>
       </div>

@@ -9,7 +9,7 @@ export function calcPoints(pred: PredictionScore, result: PredictionScore): numb
 }
 
 export function scoreLabel(points: number): string {
-  if (points === 6) return '+6 exacto'
+  if (points === 6) return '+6 exact'
   if (points === 3) return '+3'
   return '0 pts'
 }

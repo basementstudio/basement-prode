@@ -1,5 +1,5 @@
 function formatParts(kickoffUtc: string, timeZone: string, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat('es-AR', { timeZone, ...options }).format(new Date(kickoffUtc))
+  return new Intl.DateTimeFormat('en-US', { timeZone, ...options }).format(new Date(kickoffUtc))
 }
 
 export function getUserTimezone(): string {
@@ -39,7 +39,7 @@ export function formatKickoffTime(kickoffUtc: string, timeZone: string): string 
 
 export function formatTimezoneLabel(timeZone: string): string {
   try {
-    const parts = new Intl.DateTimeFormat('es-AR', {
+    const parts = new Intl.DateTimeFormat('en-US', {
       timeZone,
       timeZoneName: 'shortOffset',
     }).formatToParts(new Date())

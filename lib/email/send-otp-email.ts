@@ -11,13 +11,13 @@ interface SendOtpEmailParams {
 function getSubject(type: OtpEmailType): string {
   switch (type) {
     case 'sign-in':
-      return 'Tu código para entrar al Prode 2026'
+      return 'Your code to enter Prode/Basement'
     case 'email-verification':
-      return 'Verificá tu email — Prode 2026'
+      return 'Verify your email — Prode/Basement'
     case 'forget-password':
-      return 'Restablecer acceso — Prode 2026'
+      return 'Reset access — Prode/Basement'
     case 'change-email':
-      return 'Confirmá tu nuevo email — Prode 2026'
+      return 'Confirm your new email — Prode/Basement'
     default: {
       const _exhaustive: never = type
       return _exhaustive
@@ -28,15 +28,15 @@ function getSubject(type: OtpEmailType): string {
 function buildHtml(otp: string, type: OtpEmailType): string {
   const action =
     type === 'sign-in'
-      ? 'Ingresá este código para entrar al prode.'
+      ? 'Enter this code to sign in to the pool.'
       : type === 'email-verification'
-        ? 'Usá este código para verificar tu email.'
+        ? 'Use this code to verify your email.'
         : type === 'change-email'
-          ? 'Usá este código para confirmar tu nuevo email.'
-          : 'Usá este código para restablecer tu acceso.'
+          ? 'Use this code to confirm your new email.'
+          : 'Use this code to reset your access.'
 
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <body style="margin:0;padding:0;background:#0a0a0a;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:#f5f5f5;">
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
       <tr>
@@ -45,13 +45,13 @@ function buildHtml(otp: string, type: OtpEmailType): string {
             <tr>
               <td style="padding:28px 24px 8px;">
                 <p style="margin:0 0 8px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#888;">
-                  PRODE/2026 · ACCESO
+                  PRODE/BASEMENT · ACCESS
                 </p>
                 <h1 style="margin:0 0 12px;font-size:24px;font-weight:700;letter-spacing:-0.02em;color:#fff;">
-                  Tu código de acceso
+                  Your access code
                 </h1>
                 <p style="margin:0 0 24px;font-size:14px;line-height:1.5;color:#aaa;">
-                  ${action} Expira en 10 minutos.
+                  ${action} Expires in 10 minutes.
                 </p>
               </td>
             </tr>
@@ -65,7 +65,7 @@ function buildHtml(otp: string, type: OtpEmailType): string {
             <tr>
               <td style="padding:0 24px 24px;">
                 <p style="margin:0;font-size:12px;line-height:1.5;color:#666;">
-                  Si no pediste este código, podés ignorar este mail.
+                  If you did not request this code, you can ignore this email.
                 </p>
               </td>
             </tr>
@@ -87,11 +87,11 @@ export async function sendOtpEmail({ email, otp, type }: SendOtpEmailParams): Pr
 
   if (!user || !pass) {
     console.log(`[auth] OTP for ${email} (${type}): ${otp}`)
-    console.warn('[auth] SMTP_USER / SMTP_PASS no configurados — el código solo aparece en consola.')
+    console.warn('[auth] SMTP_USER / SMTP_PASS not configured — code only appears in console.')
     return
   }
 
-  const from = process.env.EMAIL_FROM ?? `Prode 2026 <${user}>`
+  const from = process.env.EMAIL_FROM ?? `Prode/Basement <${user}>`
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user, pass },
@@ -102,6 +102,6 @@ export async function sendOtpEmail({ email, otp, type }: SendOtpEmailParams): Pr
     to: email,
     subject: getSubject(type),
     html: buildHtml(otp, type),
-    text: `Tu código de acceso al Prode 2026: ${otp}. Expira en 10 minutos.`,
+    text: `Your Prode/Basement access code: ${otp}. Expires in 10 minutes.`,
   })
 }

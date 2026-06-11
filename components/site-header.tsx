@@ -23,27 +23,27 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   {
     href: '/pronosticos',
-    label: 'PRONÓSTICOS',
+    label: 'PICKS',
     isActive: pathname => pathname === '/pronosticos' || pathname === '/',
   },
   {
     href: '/en-vivo',
-    label: 'EN VIVO',
+    label: 'LIVE',
     isActive: pathname => pathname === '/en-vivo',
   },
   {
     href: '/concluidos',
-    label: 'CONCLUIDOS',
+    label: 'FINISHED',
     isActive: pathname => pathname === '/concluidos',
   },
   {
     href: '/aciertos',
-    label: 'ACIERTOS',
+    label: 'HITS',
     isActive: pathname => pathname === '/aciertos',
   },
   {
     href: '/tabla',
-    label: 'TABLA',
+    label: 'LEADERBOARD',
     isActive: pathname => pathname === '/tabla',
   },
 ]
@@ -121,19 +121,16 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
         <Link
           href="/pronosticos"
           className="mr-auto flex min-w-0 shrink flex-col gap-0.5 no-underline"
-          aria-label="Ir a pronósticos"
+          aria-label="Go to picks"
         >
           <span className="truncate text-lg font-bold uppercase leading-none tracking-tight text-fg-1 md:text-xl">
-            PRODE/2026
-          </span>
-          <span className="hidden font-mono text-[10px] uppercase tracking-wider text-fg-3 sm:block">
-            BASEMENT.STUDIO
+            BASEMENT/ PRODE
           </span>
         </Link>
 
         <nav
           className="absolute left-1/2 hidden h-full -translate-x-1/2 items-stretch lg:flex"
-          aria-label="Navegación principal"
+          aria-label="Main navigation"
         >
           {NAV_ITEMS.map(item => {
             const active = item.isActive(pathname)
@@ -156,7 +153,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
             <Link
               href="/tabla"
               className="flex h-9 items-center gap-2 border border-border px-3 no-underline transition-colors duration-200 ease-base hover:border-fg-2 hover:bg-gray-800"
-              aria-label="Ir a tu perfil"
+              aria-label="Go to your profile"
             >
               <UserAvatar name={userName} imageUrl={avatarUrl} size="sm" />
               <span className="font-mono text-[11px] uppercase text-fg-2">
@@ -167,9 +164,9 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
               variant="outline"
               onClick={handleSignOut}
               className="h-9 rounded-none border-l-0 font-mono text-[11px] uppercase tracking-wide"
-              aria-label="Cerrar sesión"
+              aria-label="Sign out"
             >
-              SALIR
+              SIGN OUT
             </Button>
           </div>
         )}
@@ -181,9 +178,9 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
               'flex h-9 items-center border border-border px-3 font-mono text-[10px] uppercase tracking-wide no-underline transition-colors duration-200 ease-base hover:border-fg-2 hover:bg-gray-800 sm:text-[11px]',
               pathname === '/tabla' ? 'border-fg-2 bg-gray-800 text-fg-1' : 'text-fg-2',
             )}
-            aria-label="Ir a la tabla"
+            aria-label="Go to leaderboard"
           >
-            PRODE/BASEMENT
+            LEADERBOARD
           </Link>
           <Button
             variant="outline"
@@ -191,7 +188,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
             className="size-9 rounded-none p-0 font-mono"
             aria-expanded={menuOpen}
             aria-controls="mobile-nav"
-            aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           >
             <MenuIcon open={menuOpen} />
           </Button>
@@ -204,12 +201,12 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
             type="button"
             className="fixed inset-0 top-[52px] z-40 bg-black/70 lg:hidden"
             onClick={() => setMenuOpen(false)}
-            aria-label="Cerrar menú"
+            aria-label="Close menu"
           />
           <nav
             id="mobile-nav"
             className="absolute inset-x-0 top-full z-50 max-h-[calc(100dvh-52px)] overflow-y-auto border-b border-border bg-black/95 backdrop-blur-sm scrollbar-none lg:hidden"
-            aria-label="Navegación móvil"
+            aria-label="Mobile navigation"
           >
             {NAV_ITEMS.filter(item => item.href !== '/tabla').map(item => {
               const active = item.isActive(pathname)
@@ -247,9 +244,9 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
                   variant="outline"
                   onClick={handleSignOut}
                   className="min-h-[44px] rounded-none border-0 border-l border-border px-4 font-mono text-[11px] uppercase tracking-wide"
-                  aria-label="Cerrar sesión"
+                  aria-label="Sign out"
                 >
-                  SALIR
+                  SIGN OUT
                 </Button>
               </div>
             )}

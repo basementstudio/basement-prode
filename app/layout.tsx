@@ -6,8 +6,8 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'PRODE/2026 — BASEMENT.STUDIO',
-  description: 'Pool de pronósticos interno para el Mundial 2026. Solo crew de basement.',
+  title: 'PRODE/BASEMENT — World Cup 2026',
+  description: 'Internal prediction pool for World Cup 2026. Basement crew only.',
   generator: 'v0.app',
 }
 
@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
-      lang="es"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} bg-[#000000]`}
     >
       <body className="font-sans antialiased min-h-screen text-[#EBEBEB]">

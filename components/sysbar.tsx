@@ -12,17 +12,17 @@ export function Sysbar() {
     <div className="sysbar hidden md:flex" role="banner">
       <div className="sysbar-item accent">
         <span className="sysbar-dot" aria-hidden="true" />
-        PRODE.BASEMENT.STUDIO
+        PRODE/BASEMENT
       </div>
       <div className="sysbar-item">/</div>
       <div className="sysbar-item">
-        MUNDIAL 2026
+        WORLD CUP 2026
       </div>
       <div className="sysbar-item">
         ·
       </div>
       <div className="sysbar-item">
-        FASE DE GRUPOS
+        GROUP STAGE
       </div>
 
       {/* spacer */}
@@ -34,10 +34,10 @@ export function Sysbar() {
         </div>
       )}
       <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>
-        3 PTS GANADOR
+        3 PTS WINNER
       </div>
       <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>
-        ×2 EXACTO
+        ×2 EXACT
       </div>
       <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>
         {build}

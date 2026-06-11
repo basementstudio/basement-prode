@@ -32,7 +32,7 @@ function ResultRow({ item, userTz }: { item: ScoredPrediction; userTz: string })
       style={{ marginBottom: '-1px' }}
     >
       <div className="aciertos-row-meta mono-label">
-        <span>GRUPO {match.group}</span>
+        <span>GROUP {match.group}</span>
         <span style={{ color: 'var(--fg-4)' }}>·</span>
         <span>{dateLabel}</span>
         <span style={{ color: 'var(--fg-4)' }}>·</span>
@@ -47,11 +47,11 @@ function ResultRow({ item, userTz }: { item: ScoredPrediction; userTz: string })
 
         <div className="aciertos-scores">
           <div className="aciertos-score-block">
-            <span className="mono-label aciertos-score-label">Tu pronóstico</span>
+            <span className="mono-label aciertos-score-label">Your pick</span>
             <span className="aciertos-score-value">{prediction.home}:{prediction.away}</span>
           </div>
           <div className="aciertos-score-block aciertos-score-block--result">
-            <span className="mono-label aciertos-score-label">Resultado</span>
+            <span className="mono-label aciertos-score-label">Result</span>
             <span className="aciertos-score-value">{result.home}:{result.away}</span>
           </div>
           <span className={`badge ${points === 6 ? 'exact' : points === 3 ? 'winner' : 'pts'}`}>
@@ -84,45 +84,45 @@ export function AciertosClient({
       <div className="eyebrow" style={{ marginBottom: '8px' }}>
         <span className="num">02</span>
         <span className="sep"> — </span>
-        TUS RESULTADOS
+        YOUR RESULTS
       </div>
       <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px' }}>
-        Aciertos y puntos.
+        Hits and points.
       </h1>
       <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5', marginBottom: '32px' }}>
-        Partidos ya jugados con resultado oficial. 3 pts por ganador o empate correcto, 6 si clavaste el marcador.
+        Played matches with official results. 3 pts for correct winner or draw, 6 if you nailed the score.
       </p>
 
       <div className="aciertos-stats">
         <div className="aciertos-stat aciertos-stat--primary">
           <span className="aciertos-stat-value">{totalPoints}</span>
-          <span className="mono-label aciertos-stat-label">PUNTOS TOTALES</span>
+          <span className="mono-label aciertos-stat-label">TOTAL POINTS</span>
         </div>
         <div className="aciertos-stat">
           <span className="aciertos-stat-value">{hits}</span>
-          <span className="mono-label aciertos-stat-label">ACIERTOS</span>
+          <span className="mono-label aciertos-stat-label">HITS</span>
         </div>
         <div className="aciertos-stat">
           <span className="aciertos-stat-value">{exactCount}</span>
-          <span className="mono-label aciertos-stat-label">EXACTOS (+6)</span>
+          <span className="mono-label aciertos-stat-label">EXACT (+6)</span>
         </div>
         <div className="aciertos-stat">
           <span className="aciertos-stat-value">{winnerCount}</span>
-          <span className="mono-label aciertos-stat-label">GANADOR (+3)</span>
+          <span className="mono-label aciertos-stat-label">WINNER (+3)</span>
         </div>
         <div className="aciertos-stat">
           <span className="aciertos-stat-value">{missCount}</span>
-          <span className="mono-label aciertos-stat-label">FALLADOS</span>
+          <span className="mono-label aciertos-stat-label">MISSED</span>
         </div>
       </div>
 
       {playedCount === 0 ? (
         <div style={{ border: '1px solid var(--fg-4)', padding: '48px 24px', textAlign: 'center' }}>
           <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
-            Todavía no hay partidos con resultado para puntuar.
+            No scored matches yet.
           </span>
           <div style={{ marginTop: '16px' }}>
-            <Link href="/pronosticos" className="btn">IR A PRONÓSTICOS</Link>
+            <Link href="/pronosticos" className="btn">GO TO PICKS</Link>
           </div>
         </div>
       ) : (

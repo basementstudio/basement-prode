@@ -8,7 +8,7 @@ export function isAcceptedAvatarType(type: string): type is (typeof ACCEPTED_TYP
 
 export async function compressImageFile(file: File): Promise<string> {
   if (!isAcceptedAvatarType(file.type)) {
-    throw new Error('Formato no soportado. Usá JPG, PNG o WebP.')
+    throw new Error('Unsupported format. Use JPG, PNG, or WebP.')
   }
 
   const bitmap = await createImageBitmap(file)
@@ -21,7 +21,7 @@ export async function compressImageFile(file: File): Promise<string> {
   canvas.height = height
 
   const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('No se pudo procesar la imagen.')
+  if (!ctx) throw new Error('Could not process the image.')
 
   ctx.drawImage(bitmap, 0, 0, width, height)
   bitmap.close()
@@ -35,7 +35,7 @@ export async function compressImageFile(file: File): Promise<string> {
   }
 
   if (dataUrl.length > MAX_BYTES * 1.37) {
-    throw new Error('La imagen es muy pesada. Probá con una más chica.')
+    throw new Error('Image is too large. Try a smaller file.')
   }
 
   return dataUrl

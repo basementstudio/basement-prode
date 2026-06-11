@@ -106,7 +106,7 @@ export function GroupMatchesCarousel({
   return (
     <div className="w-full min-w-0">
       <div className="group-carousel-header">
-        <h2 className="group-carousel-title">Grupo {currentGroup?.group ?? '—'}</h2>
+        <h2 className="group-carousel-title">Group {currentGroup?.group ?? '—'}</h2>
         <span className="mono-label" style={{ color: 'var(--fg-2)', flexShrink: 0 }}>
           {currentGroupIndex + 1} / {groups.length}
         </span>
@@ -153,7 +153,7 @@ export function GroupMatchesCarousel({
       </Carousel>
 
       <div className="group-tabs-wrap">
-        <nav ref={groupTabsRef} className="group-tabs scrollbar-none" aria-label="Grupos">
+        <nav ref={groupTabsRef} className="group-tabs scrollbar-none" aria-label="Groups">
           {groups.map((group, index) => (
             <button
               key={group.group}
@@ -161,7 +161,7 @@ export function GroupMatchesCarousel({
               data-group-tab={index}
               className={cn('group-tab', index === currentGroupIndex && 'is-active')}
               onClick={() => scrollToGroup(index)}
-              aria-label={`Grupo ${group.group}`}
+              aria-label={`Group ${group.group}`}
               aria-current={index === currentGroupIndex ? 'true' : undefined}
             >
               {group.group}

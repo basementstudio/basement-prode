@@ -222,8 +222,8 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
   }, [currentGroupIndex, bumpFocus])
 
   const viewOptions: { key: ViewMode; label: string; count: number }[] = [
-    { key: 'todos', label: 'Todos', count: matches.length },
-    { key: 'por-grupo', label: 'Por grupo', count: groupsUpcoming.length },
+    { key: 'todos', label: 'All', count: matches.length },
+    { key: 'por-grupo', label: 'By group', count: groupsUpcoming.length },
   ]
 
   return (
@@ -233,19 +233,19 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
           <div className="eyebrow" style={{ marginBottom: '8px' }}>
             <span className="num">01</span>
             <span className="sep"> — </span>
-            FASE DE GRUPOS
+            GROUP STAGE
             <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
-            <span>{matches.length} PARTIDOS</span>
+            <span>{matches.length} MATCHES</span>
             <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
             <span style={{ color: dataSource === 'worldcup26' ? 'var(--color-contrast)' : 'var(--fg-3)' }}>
-              {dataSource === 'worldcup26' ? 'DATOS EN VIVO' : dataSource === 'api-football' ? 'API-FOOTBALL' : 'DATOS LOCALES'}
+              {dataSource === 'worldcup26' ? 'LIVE DATA' : dataSource === 'api-football' ? 'API-FOOTBALL' : 'LOCAL DATA'}
             </span>
           </div>
           <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px' }}>
-            Cargá tus pronósticos.
+            Enter your picks.
           </h1>
           <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5' }}>
-            Local → visitante → siguiente partido, al instante. En Por grupo, al terminar el último partido pasás al siguiente grupo. Horarios en {tzLabel}.
+            Home → away → next match, instantly. In By group, finishing the last match moves you to the next group. Times in {tzLabel}.
           </p>
         </div>
         <div className="page-shell-stat">
@@ -254,20 +254,20 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
             <span style={{ fontSize: '16px', color: 'var(--fg-3)', fontWeight: 400 }}> / {upcoming.length}</span>
           </div>
           <div className="mono-label" style={{ color: 'var(--fg-3)', marginTop: '4px' }}>
-            por cargar
+            left to pick
           </div>
         </div>
       </div>
 
       <div style={{ marginBottom: '4px', marginTop: '16px' }}>
-        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>PROGRESO</span>
+        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>PROGRESS</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
         <div className="progress-bar" style={{ flex: 1 }}>
           <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
         <span className="mono-label" style={{ color: 'var(--fg-3)', flexShrink: 0 }}>
-          {savedCount} DE {upcoming.length}
+          {savedCount} OF {upcoming.length}
         </span>
       </div>
 
@@ -288,7 +288,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
 
       {viewMode === 'todos' && (
         sortedMatches.length === 0 ? (
-          <EmptyState message="No hay partidos" />
+          <EmptyState message="No matches" />
         ) : (
           <div style={{ border: '1px solid var(--fg-4)' }}>
             {sortedMatches.map(match => {
@@ -321,7 +321,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
 
       {viewMode === 'por-grupo' && (
         groupsUpcoming.length === 0 ? (
-          <EmptyState message="No quedan grupos con partidos por jugar" />
+          <EmptyState message="No groups left with upcoming matches" />
         ) : (
           <GroupMatchesCarousel
             groups={groupsUpcoming}

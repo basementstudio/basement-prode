@@ -31,20 +31,20 @@ function MatchStatusBadge({
     return (
       <span className="mono-label badge badge-live">
         <span className="badge-live-dot" aria-hidden />
-        EN VIVO
+        LIVE
       </span>
     )
   }
 
   if (status === 'finished') {
-    return <span className="mono-label badge badge-finished">CONCLUIDO</span>
+    return <span className="mono-label badge badge-finished">FINISHED</span>
   }
 
   if (saved) {
-    return <span className="mono-label badge badge-saved">GUARDADO ✓</span>
+    return <span className="mono-label badge badge-saved">SAVED ✓</span>
   }
 
-  return <span className="mono-label badge badge-upcoming">POR JUGAR</span>
+  return <span className="mono-label badge badge-upcoming">UPCOMING</span>
 }
 
 function LockedScores({
@@ -83,24 +83,24 @@ function LockedScores({
         </div>
       ) : !compact && status === 'live' ? (
         <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
-          Partido en curso{elapsed != null ? ` · ${elapsed}'` : ''}
+          Match in progress{elapsed != null ? ` · ${elapsed}'` : ''}
         </span>
       ) : !compact && concluded ? (
-        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Resultado pendiente</span>
+        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Result pending</span>
       ) : !compact ? (
-        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Pronósticos cerrados</span>
+        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Picks locked</span>
       ) : null}
 
       {compact && status === 'live' && (
         <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
-          Partido en curso{elapsed != null ? ` · ${elapsed}'` : ''}
+          Match in progress{elapsed != null ? ` · ${elapsed}'` : ''}
         </span>
       )}
 
       {hasPred && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
           <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
-            Tu pronóstico: {prediction!.home}:{prediction!.away}
+            Your pick: {prediction!.home}:{prediction!.away}
           </span>
           {points !== null && (
             <span className={`badge ${points === 6 ? 'exact' : points === 3 ? 'winner' : 'pts'}`}>
@@ -111,7 +111,7 @@ function LockedScores({
       )}
 
       {!hasPred && concluded && (
-        <span className="mono-label" style={{ color: 'var(--fg-4)' }}>Sin pronóstico</span>
+        <span className="mono-label" style={{ color: 'var(--fg-4)' }}>No pick</span>
       )}
     </div>
   )
@@ -384,7 +384,7 @@ export function MatchCard({
         }}
       >
         <div className="match-card-meta">
-          <span>GRUPO {match.group}</span>
+          <span>GROUP {match.group}</span>
           <span className="match-card-meta-sep">·</span>
           <span>{dateLabel}</span>
           <span className="match-card-meta-sep">·</span>
@@ -416,7 +416,7 @@ export function MatchCard({
                 disabled={saving}
                 inputRef={homeRef}
                 className="score-input-inline"
-                aria-label={`Goles ${match.home.name}`}
+                aria-label={`Goals ${match.home.name}`}
                 onActivate={onActivate}
                 onEdited={markHomeEdited}
                 onTabNext={() => {
@@ -442,7 +442,7 @@ export function MatchCard({
                 disabled={saving}
                 inputRef={awayRef}
                 className="score-input-inline"
-                aria-label={`Goles ${match.away.name}`}
+                aria-label={`Goals ${match.away.name}`}
                 onActivate={onActivate}
                 onEdited={markAwayEdited}
                 onTabNext={handleAwayComplete}
@@ -494,7 +494,7 @@ export function MatchCard({
                 onChange={setHomeScore}
                 disabled={saving}
                 inputRef={homeRef}
-                aria-label={`Goles ${match.home.name}`}
+                aria-label={`Goals ${match.home.name}`}
                 onActivate={onActivate}
                 onEdited={markHomeEdited}
                 onTabNext={() => {
@@ -508,7 +508,7 @@ export function MatchCard({
                 onChange={setAwayScore}
                 disabled={saving}
                 inputRef={awayRef}
-                aria-label={`Goles ${match.away.name}`}
+                aria-label={`Goals ${match.away.name}`}
                 onActivate={onActivate}
                 onEdited={markAwayEdited}
                 onTabNext={handleAwayComplete}

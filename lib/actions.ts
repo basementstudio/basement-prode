@@ -39,13 +39,13 @@ export async function savePrediction(
   const userId = await getUserId()
 
   const match = await getMatchByIdAsync(matchId)
-  if (!match) throw new Error('Partido no encontrado')
+  if (!match) throw new Error('Match not found')
 
   const now = clientNowMs != null ? new Date(clientNowMs) : new Date()
-  if (isMatchLocked(match, now)) throw new Error('Este partido ya empezó y no se puede editar')
+  if (isMatchLocked(match, now)) throw new Error('This match has started and can no longer be edited')
 
   if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
-    throw new Error('Marcador inválido: usá enteros de 0 a 99')
+    throw new Error('Invalid score: use integers from 0 to 99')
   }
 
   const existing = await db
@@ -244,11 +244,11 @@ export async function updateAvatar(avatarUrl: string) {
   const userId = await getUserId()
 
   if (!avatarUrl.startsWith('data:image/')) {
-    throw new Error('Imagen inválida')
+    throw new Error('Invalid image')
   }
 
   if (avatarUrl.length > 700_000) {
-    throw new Error('La imagen es muy pesada')
+    throw new Error('Image is too large')
   }
 
   await upsertProfile(userId, { avatarUrl })
