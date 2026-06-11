@@ -490,7 +490,16 @@
   background: rgba(255, 77, 0, 0.04);
 }
 .match-card.played {
-  opacity: 0.8;
+  opacity: 0.85;
+}
+.match-card.live {
+  border-color: rgba(255, 77, 0, 0.35);
+}
+.match-card.locked:not(.played) {
+  opacity: 0.75;
+}
+.match-card.locked {
+  opacity: 0.85;
 }
 
 /* ============================================================
@@ -602,6 +611,33 @@
 .badge.winner {
   color: var(--fg-2);
   border-color: var(--fg-4);
+}
+.badge-upcoming {
+  color: var(--fg-3);
+  border-color: var(--fg-4);
+}
+.badge-saved {
+  color: var(--color-contrast);
+  border-color: var(--color-contrast);
+  background: rgba(255, 77, 0, 0.05);
+}
+.badge-live {
+  color: var(--color-contrast);
+  border-color: var(--color-contrast);
+  background: rgba(255, 77, 0, 0.08);
+  gap: 5px;
+}
+.badge-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50% !important;
+  background: var(--color-contrast);
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+.badge-finished {
+  color: var(--fg-3);
+  border-color: var(--fg-4);
+  background: rgba(235, 235, 235, 0.03);
 }
 
 /* ============================================================
@@ -797,6 +833,10 @@ html {
 @keyframes highlight-pulse {
   0%   { background: rgba(255, 77, 0, 0.12); }
   100% { background: transparent; }
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.85); }
 }
 .highlight-flash {
   animation: highlight-pulse 600ms var(--ease-base) forwards;
