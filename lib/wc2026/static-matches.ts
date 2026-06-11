@@ -64,7 +64,7 @@ function buildMatch(raw: RawMatch): Match {
 }
 
 const RAW_MATCHES: RawMatch[] = [
-  { group: 'A', n: 1, kickoffUtc: '2026-06-11T19:00:00Z', timezone: TZ.MEX, venue: 'Estadio Ciudad de México', home: 'MEX', away: 'RSA', result: { home: 2, away: 0 } },
+  { group: 'A', n: 1, kickoffUtc: '2026-06-11T19:00:00Z', timezone: TZ.MEX, venue: 'Estadio Ciudad de México', home: 'MEX', away: 'RSA' },
   { group: 'A', n: 2, kickoffUtc: '2026-06-12T02:00:00Z', timezone: TZ.MEX, venue: 'Estadio Guadalajara', home: 'KOR', away: 'CZE' },
   { group: 'A', n: 3, kickoffUtc: '2026-06-18T16:00:00Z', timezone: TZ.NY, venue: 'Mercedes-Benz Stadium', home: 'CZE', away: 'RSA' },
   { group: 'A', n: 4, kickoffUtc: '2026-06-19T01:00:00Z', timezone: TZ.MEX, venue: 'Estadio Guadalajara', home: 'MEX', away: 'KOR' },

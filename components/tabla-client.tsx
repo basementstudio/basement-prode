@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { UserAvatar } from '@/components/user-avatar'
 import { updateProfile, updateAvatar } from '@/lib/actions'
 import { compressImageFile } from '@/lib/avatar-utils'
 
@@ -31,36 +32,6 @@ const PRIZES: Record<number, { label: string; desc: string }> = {
   1: { label: '1°', desc: 'Buzo basement' },
   2: { label: '2°', desc: 'Botella basement' },
   3: { label: '3°', desc: 'Remera basement' },
-}
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-}
-
-function Avatar({
-  name,
-  url,
-  size = 'sm',
-}: {
-  name: string
-  url: string | null
-  size?: 'sm' | 'lg'
-}) {
-  const cls = size === 'lg' ? 'avatar lg' : 'avatar'
-  return (
-    <div className={cls} aria-hidden="true">
-      {url ? (
-        <img src={url} alt={name} />
-      ) : (
-        initials(name)
-      )}
-    </div>
-  )
 }
 
 function PlayerIdentity({
@@ -108,7 +79,7 @@ function PodiumCell({
       </div>
       {player ? (
         <div className="podium-player-row">
-          <Avatar name={player.name} url={player.avatarUrl} />
+          <UserAvatar name={player.name} imageUrl={player.avatarUrl} highlight={isMe} />
           <PlayerIdentity
             name={player.name}
             subtitle={player.email}
@@ -219,17 +190,12 @@ export function TablaClient({ players, myProfile }: Props) {
 
             <button
               type="button"
-              className="avatar lg avatar-upload"
+              className="mb-4 cursor-pointer transition-colors disabled:cursor-wait disabled:opacity-60 hover:enabled:[&_[data-slot=avatar]]:after:border-fg-2"
               onClick={handleAvatarSelect}
               disabled={isUploading}
               aria-label="Subir foto de perfil"
-              style={{ marginBottom: '16px' }}
             >
-              {avatarPreview ? (
-                <img src={avatarPreview} alt={nameValue} />
-              ) : (
-                initials(nameValue)
-              )}
+              <UserAvatar name={nameValue} imageUrl={avatarPreview} size="lg" highlight />
             </button>
 
             <input
@@ -350,7 +316,7 @@ export function TablaClient({ players, myProfile }: Props) {
                     </td>
                     <td>
                       <div className="table-player-row">
-                        <Avatar name={player.name} url={player.avatarUrl} />
+                        <UserAvatar name={player.name} imageUrl={player.avatarUrl} highlight={isMe} />
                         <PlayerIdentity
                           name={player.name}
                           subtitle={player.email.split('@')[0]}

@@ -6,14 +6,10 @@ export interface KnownResult {
   statusShort?: string
 }
 
-/** Por id estático (GAM1) o clave kickoff+equipos para partidos de la API. */
-export const KNOWN_RESULTS_BY_ID: Record<string, KnownResult> = {
-  GAM1: { result: { home: 2, away: 0 }, statusShort: 'FT' },
-}
+/** Fallback manual si todas las APIs fallan. */
+export const KNOWN_RESULTS_BY_ID: Record<string, KnownResult> = {}
 
-export const KNOWN_RESULTS_BY_FIXTURE: Record<string, KnownResult> = {
-  '2026-06-11T19:00:00Z:MEX:RSA': { result: { home: 2, away: 0 }, statusShort: 'FT' },
-}
+export const KNOWN_RESULTS_BY_FIXTURE: Record<string, KnownResult> = {}
 
 function fixtureKey(match: Match): string {
   const kickoff = match.kickoffUtc.endsWith('Z') ? match.kickoffUtc : `${match.kickoffUtc}Z`

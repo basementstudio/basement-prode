@@ -6,16 +6,9 @@ interface FlagStripesProps {
 export function FlagStripes({ colors, className = '' }: FlagStripesProps) {
   const stripes = colors.split(',').map(c => c.trim()).filter(Boolean)
   return (
-    <div
-      className={`flag-stripes ${className}`}
-      aria-hidden="true"
-      style={{ display: 'flex', flexDirection: 'column', width: '28px', height: '20px', overflow: 'hidden', flexShrink: 0 }}
-    >
+    <div className={`flag-stripes ${className}`} aria-hidden="true">
       {stripes.map((color, i) => (
-        <div
-          key={i}
-          style={{ flex: 1, background: color }}
-        />
+        <div key={i} className="flag-stripe" style={{ background: color }} />
       ))}
     </div>
   )

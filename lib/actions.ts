@@ -3,8 +3,10 @@
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { predictions, userProfiles, user } from '@/lib/db/schema'
-import { isMatchLocked } from '@/lib/wc2026-data'
+import { isMatchLocked, getMatchKickoffMs } from '@/lib/wc2026-data'
 import { getMatchByIdAsync, getGroupStageMatches } from '@/lib/wc2026/get-matches'
+import { calcPoints } from '@/lib/scoring'
+import type { Match } from '@/lib/wc2026/types'
 import { and, eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
@@ -61,7 +63,10 @@ export async function savePrediction(
     })
   }
   revalidatePath('/pronosticos')
+  revalidatePath('/en-vivo')
+  revalidatePath('/concluidos')
   revalidatePath('/tabla')
+  revalidatePath('/aciertos')
 }
 
 export async function getLeaderboard() {
@@ -115,6 +120,58 @@ export async function getLeaderboard() {
     }))
     .sort((a, b) => b.points - a.points)
     .map((u, i) => ({ ...u, rank: i + 1 }))
+}
+
+export type ScoredPrediction = {
+  match: Match
+  prediction: { home: number; away: number }
+  result: { home: number; away: number }
+  points: number
+  outcome: 'exact' | 'winner' | 'miss'
+}
+
+export async function getMyScoredPredictions(): Promise<{
+  items: ScoredPrediction[]
+  totalPoints: number
+  exactCount: number
+  winnerCount: number
+  missCount: number
+  playedCount: number
+}> {
+  const userId = await getUserId()
+  const rows = await db.select().from(predictions).where(eq(predictions.userId, userId))
+  const allMatches = await getGroupStageMatches()
+
+  const items: ScoredPrediction[] = []
+
+  for (const row of rows) {
+    const match = allMatches.find(m => m.id === row.matchId)
+    if (!match?.result) continue
+
+    const prediction = { home: row.homeScore, away: row.awayScore }
+    const points = calcPoints(prediction, match.result)
+    const outcome: ScoredPrediction['outcome'] =
+      points === 6 ? 'exact' : points === 3 ? 'winner' : 'miss'
+
+    items.push({
+      match,
+      prediction,
+      result: match.result,
+      points,
+      outcome,
+    })
+  }
+
+  items.sort((a, b) => getMatchKickoffMs(b.match) - getMatchKickoffMs(a.match))
+
+  return {
+    items,
+    totalPoints: items.reduce((sum, item) => sum + item.points, 0),
+    exactCount: items.filter(i => i.outcome === 'exact').length,
+    winnerCount: items.filter(i => i.outcome === 'winner').length,
+    missCount: items.filter(i => i.outcome === 'miss').length,
+    playedCount: items.length,
+  }
 }
 
 export async function getMyProfile() {
