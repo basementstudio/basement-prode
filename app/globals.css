@@ -1498,3 +1498,166 @@
   color: var(--fg-1);
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Prize showcase (3D merch) ── */
+
+@utility prize-showcase {
+  margin-bottom: 32px;
+}
+
+@utility prize-showcase-eyebrow {
+  color: var(--fg-3);
+  margin-bottom: 8px;
+}
+
+@utility prize-showcase-copy {
+  color: var(--fg-3);
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 520px;
+  margin-bottom: 16px;
+}
+
+@utility prize-showcase-desktop {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    border: 1px solid var(--fg-4);
+  }
+}
+
+@utility prize-showcase-mobile {
+  display: block;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+@utility prize-card {
+  border: 1px solid var(--fg-4);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 320px;
+  background: rgba(255, 255, 255, 0.01);
+
+  @media (min-width: 768px) {
+    padding: 20px;
+    min-height: 360px;
+
+    &:not(:last-child) {
+      border-right: none;
+    }
+  }
+}
+
+@utility prize-card-gold {
+  border-top: 2px solid #ffd700;
+}
+
+@utility prize-card-silver {
+  border-top: 2px solid #c0c0c0;
+}
+
+@utility prize-card-bronze {
+  border-top: 2px solid #cd7f32;
+}
+
+@utility prize-card-rank {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@utility prize-card-hint {
+  color: var(--fg-4);
+  font-size: 10px;
+  text-align: center;
+}
+
+@utility prize-viewer {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+  border: 1px solid var(--fg-4);
+  background: #000;
+  overflow: hidden;
+
+  @media (min-width: 768px) {
+    min-height: 240px;
+  }
+}
+
+@utility prize-viewer-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+@utility prize-viewer-fallback {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  background: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+}
+
+@utility prize-viewer-fallback-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.04) 50%,
+    transparent 70%
+  );
+  animation: prize-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes prize-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@utility prize-carousel {
+  position: relative;
+}
+
+@utility prize-carousel-item {
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+@utility prize-carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--fg-4);
+  background: rgba(0, 0, 0, 0.85);
+  color: var(--fg-2);
+  z-index: 2;
+
+  &:disabled {
+    opacity: 0.35;
+  }
+}
+
+@utility prize-carousel-prev {
+  left: 8px;
+}
+
+@utility prize-carousel-next {
+  right: 8px;
+}

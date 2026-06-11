@@ -6,6 +6,8 @@ import { UserAvatar } from '@/components/user-avatar'
 import { updateProfile, updateAvatar } from '@/lib/actions'
 import { compressImageFile } from '@/lib/avatar-utils'
 import { cn } from '@/lib/utils'
+import { PRIZES_BY_RANK } from '@/lib/prizes'
+import { PrizeShowcase } from '@/components/prizes/prize-showcase'
 
 interface Player {
   id: string
@@ -30,11 +32,7 @@ interface Props {
   myProfile: MyProfile
 }
 
-const PRIZES: Record<number, { label: string; desc: string }> = {
-  1: { label: '1st', desc: 'Basement hoodie' },
-  2: { label: '2nd', desc: 'Basement bottle' },
-  3: { label: '3rd', desc: 'Basement tee' },
-}
+const PRIZES = PRIZES_BY_RANK
 
 function PlayerIdentity({
   name,
@@ -268,6 +266,8 @@ export function TablaClient({ players, myProfile }: Props) {
           )}
         </div>
       </div>
+
+      <PrizeShowcase />
 
       {players.length >= 1 && (
         <div style={{ marginBottom: '32px' }}>
