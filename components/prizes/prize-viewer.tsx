@@ -23,11 +23,11 @@ function PrizeFallback() {
 
 export function PrizeViewer({ prize, className }: PrizeViewerProps) {
   const isMobile = useIsMobile()
-  const [dpr, setDpr] = useState(1.5)
+  const [dpr, setDpr] = useState(2)
   const [animate, setAnimate] = useState(true)
 
   useEffect(() => {
-    setDpr(isMobile ? 1.25 : 1.75)
+    setDpr(isMobile ? 1.75 : 2)
   }, [isMobile])
 
   useEffect(() => {
@@ -69,10 +69,10 @@ export function PrizeViewer({ prize, className }: PrizeViewerProps) {
         >
           <PerformanceMonitor
             bounds={() => [30, 58]}
-            onIncline={() => setDpr(isMobile ? 1.35 : 2)}
-            onDecline={() => setDpr(1)}
+            onIncline={() => setDpr(isMobile ? 2 : 2.5)}
+            onDecline={() => setDpr(isMobile ? 1.5 : 1.75)}
             flipflops={3}
-            onFallback={() => setDpr(1)}
+            onFallback={() => setDpr(isMobile ? 1.5 : 1.75)}
           />
           <color attach="background" args={['#000000']} />
           <PrizeScene prize={prize} animate={animate} />

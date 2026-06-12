@@ -65,13 +65,13 @@ export function PrizeScene({ prize, animate }: PrizeSceneProps) {
         enablePan={false}
         enableZoom
         enableRotate
-        minDistance={1.4}
-        maxDistance={4.5}
+        minDistance={0.75}
+        maxDistance={5}
         minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI / 1.35}
         autoRotate={animate}
         autoRotateSpeed={1.2}
-        zoomSpeed={0.8}
+        zoomSpeed={1.1}
         rotateSpeed={0.85}
         dampingFactor={0.08}
         enableDamping
