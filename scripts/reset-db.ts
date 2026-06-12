@@ -9,6 +9,7 @@ async function resetDb() {
   }
 
   await pool.query(`
+    DROP TABLE IF EXISTS prediction_votes CASCADE;
     DROP TABLE IF EXISTS predictions CASCADE;
     DROP TABLE IF EXISTS user_profiles CASCADE;
     DROP TABLE IF EXISTS session CASCADE;
@@ -74,6 +75,16 @@ async function resetDb() {
       "createdAt" timestamp NOT NULL DEFAULT now(),
       "updatedAt" timestamp NOT NULL DEFAULT now()
     );
+
+    CREATE TABLE prediction_votes (
+      id text PRIMARY KEY NOT NULL,
+      "predictionId" text NOT NULL REFERENCES predictions(id) ON DELETE CASCADE,
+      "voterId" text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      "createdAt" timestamp NOT NULL DEFAULT now()
+    );
+
+    CREATE UNIQUE INDEX prediction_votes_prediction_voter_unique
+      ON prediction_votes ("predictionId", "voterId");
 
     CREATE TABLE user_profiles (
       id text PRIMARY KEY DEFAULT '',

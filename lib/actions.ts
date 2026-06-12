@@ -2,11 +2,11 @@
 
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { predictions, userProfiles, user } from '@/lib/db/schema'
+import { predictions, userProfiles, user, predictionVotes } from '@/lib/db/schema'
 import { isMatchLocked, getMatchKickoffMs } from '@/lib/wc2026-data'
 import { getMatchByIdAsync, getGroupStageMatches } from '@/lib/wc2026/get-matches'
 import { buildLeaderboardPlayers, type LeaderboardPlayer } from '@/lib/leaderboard-stats'
-import { buildRevealedMatchPredictions, type RevealedMatchPrediction } from '@/lib/match-predictions'
+import { buildRevealedMatchPredictions, summarizePredictionVotes, type RevealedMatchPrediction } from '@/lib/match-predictions'
 import { calcPoints } from '@/lib/scoring'
 import { isValidScore } from '@/lib/score'
 import type { Match } from '@/lib/wc2026/types'
@@ -169,6 +169,20 @@ export async function getRevealedPredictionsByMatchIds(
     db.select().from(user),
   ])
 
+  const predictionIds = allPreds.map(p => p.id)
+  const allVotes =
+    predictionIds.length > 0
+      ? await db
+          .select({
+            predictionId: predictionVotes.predictionId,
+            voterId: predictionVotes.voterId,
+          })
+          .from(predictionVotes)
+          .where(inArray(predictionVotes.predictionId, predictionIds))
+      : []
+
+  const voteSummary = summarizePredictionVotes(allVotes, viewerUserId)
+
   const result: Record<string, RevealedMatchPrediction[]> = {}
   for (const matchId of relevantIds) {
     const match = matchMap.get(matchId)!
@@ -181,10 +195,75 @@ export async function getRevealedPredictionsByMatchIds(
       allUsers,
       allProfiles,
       locked,
+      voteSummary,
     )
   }
 
   return result
+}
+
+export async function togglePredictionDownvote(
+  predictionId: string,
+): Promise<{ downvoteCount: number; viewerHasDownvoted: boolean }> {
+  const voterId = await getUserId()
+
+  const prediction = await db
+    .select()
+    .from(predictions)
+    .where(eq(predictions.id, predictionId))
+    .limit(1)
+
+  const row = prediction[0]
+  if (!row) throw new Error('Prediction not found')
+
+  const match = await getMatchByIdAsync(row.matchId)
+  if (!match) throw new Error('Match not found')
+
+  if (!isMatchLocked(match, new Date())) {
+    throw new Error('Downvotes are only available after kickoff')
+  }
+
+  const existing = await db
+    .select()
+    .from(predictionVotes)
+    .where(
+      and(
+        eq(predictionVotes.predictionId, predictionId),
+        eq(predictionVotes.voterId, voterId),
+      ),
+    )
+    .limit(1)
+
+  if (existing.length > 0) {
+    await db
+      .delete(predictionVotes)
+      .where(
+        and(
+          eq(predictionVotes.predictionId, predictionId),
+          eq(predictionVotes.voterId, voterId),
+        ),
+      )
+  } else {
+    await db.insert(predictionVotes).values({
+      id: nanoid(),
+      predictionId,
+      voterId,
+    })
+  }
+
+  const votes = await db
+    .select({ voterId: predictionVotes.voterId })
+    .from(predictionVotes)
+    .where(eq(predictionVotes.predictionId, predictionId))
+
+  revalidatePath('/pronosticos')
+  revalidatePath('/en-vivo')
+  revalidatePath('/concluidos')
+
+  return {
+    downvoteCount: votes.length,
+    viewerHasDownvoted: votes.some(v => v.voterId === voterId),
+  }
 }
 
 export type ScoredPrediction = {

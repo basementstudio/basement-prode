@@ -14,6 +14,7 @@ async function wipeDb() {
       verification,
       session,
       account,
+      prediction_votes,
       predictions,
       user_profiles,
       "user"
