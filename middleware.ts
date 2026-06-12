@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/api/auth']
+const PUBLIC_PATHS = ['/login', '/api/auth', '/models']
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -20,6 +20,7 @@ export function middleware(request: NextRequest) {
   if (!sessionToken) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.search = ''
     return NextResponse.redirect(url)
   }
 
@@ -34,6 +35,6 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico, icons, apple icons
      */
-    '/((?!_next/static|_next/image|favicon\\.ico|icon.*|apple-icon).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|icon.*|apple-icon|models/).*)',
   ],
 }

@@ -113,7 +113,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
       await signOut()
     }
     await syncAuthSessionAndRefresh(router)
-    router.push('/login?recover=1')
+    router.push('/login')
   }
 
   const userName = displayName || session?.user?.name || 'Player'

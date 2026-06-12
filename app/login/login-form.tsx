@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useRef, useState, useTransition, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserAvatar } from '@/components/user-avatar'
 import { NameTakenDialog } from '@/components/name-taken-dialog'
@@ -15,17 +15,32 @@ import {
   RECOVERY_PIN_MAX,
   recoveryPinError,
 } from '@/lib/recovery-pin'
-
-type Step = 'enter' | 'onboarding' | 'recover'
+type LoginMode = 'menu' | 'create' | 'sign-in'
 
 interface LoginFormProps {
-  initialStep?: Step
+  /** Used when Sign in is pressed — does not change the initial view. */
+  profileComplete?: boolean
 }
 
-export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
+const btnPrimary: CSSProperties = {
+  width: '100%',
+  height: '44px',
+  fontSize: '12px',
+  justifyContent: 'center',
+  gap: '10px',
+}
+
+const btnSecondary: CSSProperties = {
+  width: '100%',
+  height: '44px',
+  justifyContent: 'center',
+  marginTop: '10px',
+}
+
+export function LoginForm({ profileComplete = false }: LoginFormProps) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [step, setStep] = useState<Step>(initialStep)
+  const [mode, setMode] = useState<LoginMode>('menu')
   const [displayName, setDisplayName] = useState('')
   const [recoverName, setRecoverName] = useState('')
   const [recoveryPin, setRecoveryPin] = useState('')
@@ -39,30 +54,58 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
   const [isUploading, startUpload] = useTransition()
   const [isSaving, startSaving] = useTransition()
 
-  async function handleEnter() {
+  function goToMenu() {
+    setMode('menu')
+    setError('')
+    setUploadError('')
+  }
+
+  async function handleSignInFromMenu() {
     setError('')
     setLoading(true)
     try {
-      const result = await authClient.signIn.anonymous()
-      if (result.error) {
-        setError(result.error.message || 'Could not sign in. Try again.')
+      const { data } = await authClient.getSession()
+
+      if (data?.user && profileComplete) {
+        await syncAuthSessionAndRefresh(router)
+        router.push('/pronosticos')
         return
       }
-      if (!(await ensureAuthenticatedSession())) {
-        setError('Session could not be created. Try again.')
-        return
-      }
-      await syncAuthSessionAndRefresh(router)
-      setStep('onboarding')
+
+      setRecoverName('')
+      setRecoverPin('')
+      setMode('sign-in')
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Could not sign in. Try again.'
-      setError(message)
+      setError(err instanceof Error ? err.message : 'Could not sign in. Try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleRecover(e: React.FormEvent) {
+  async function handleStartCreate() {
+    setError('')
+    setLoading(true)
+    try {
+      await authClient.signOut()
+      const result = await authClient.signIn.anonymous()
+      if (result.error) {
+        setError(result.error.message || 'Could not create account. Try again.')
+        return
+      }
+      if (!(await ensureAuthenticatedSession())) {
+        setError('Could not create session. Try again.')
+        return
+      }
+      await syncAuthSessionAndRefresh(router)
+      setMode('create')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not create account. Try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -87,23 +130,23 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
         const message = result.error.message ?? ''
         setError(
           message === 'INVALID_CREDENTIALS'
-            ? 'Wrong name or PIN. Try again.'
-            : result.error.message || 'Could not recover account.',
+            ? 'Wrong name or PIN.'
+            : result.error.message || 'Could not sign in.',
         )
         return
       }
 
       if (!(await ensureAuthenticatedSession())) {
-        setError('Could not restore session. Try again.')
+        setError('Could not sign in. Try again.')
         return
       }
       await syncAuthSessionAndRefresh(router)
       router.push('/pronosticos')
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Could not recover account.'
+      const message = err instanceof Error ? err.message : 'Could not sign in.'
       setError(
         message.includes('INVALID_CREDENTIALS')
-          ? 'Wrong name or PIN. Try again.'
+          ? 'Wrong name or PIN.'
           : message,
       )
     } finally {
@@ -176,7 +219,7 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
         }
 
         if (!(await ensureAuthenticatedSession())) {
-          setError('Profile saved but session is missing. Try recovering with your name + PIN.')
+          setError('Profile saved but session is missing. Use Sign in with your name and PIN.')
           return
         }
         await syncAuthSessionAndRefresh(router)
@@ -188,18 +231,18 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
   }
 
   const heading =
-    step === 'enter'
-      ? 'Join the prode.'
-      : step === 'recover'
-        ? 'Recover your picks.'
-        : 'Set up your profile.'
+    mode === 'menu'
+      ? 'Basement prode.'
+      : mode === 'sign-in'
+        ? 'Sign in.'
+        : 'Create your profile.'
 
   const description =
-    step === 'enter'
-      ? "Basement's internal World Cup 2026 prode — just for fun. No email, just your name, photo, and a short PIN to recover later."
-      : step === 'recover'
-        ? 'Enter your name and the PIN you chose when signing up. We will restore your account and predictions.'
-        : 'Choose a unique name, upload a photo, and set a 4–6 digit PIN to recover your account later.'
+    mode === 'menu'
+      ? 'Internal World Cup 2026 prode — no email, no password. Pick how you want to enter.'
+      : mode === 'sign-in'
+        ? 'Enter the name and PIN you chose when you signed up.'
+        : 'Pick a unique name, upload a photo, and set a 4–6 digit PIN to sign in later.'
 
   return (
     <>
@@ -225,46 +268,46 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
             {description}
           </p>
 
-          {step === 'enter' && (
+          {error && (
+            <p className="mono-label" style={{ color: 'var(--color-contrast)', marginBottom: '16px' }}>
+              {error}
+            </p>
+          )}
+
+          {mode === 'menu' && (
             <div>
-              {error && (
-                <p className="mono-label" style={{ color: 'var(--color-contrast)', marginBottom: '16px' }}>
-                  {error}
-                </p>
-              )}
               <button
                 type="button"
-                onClick={handleEnter}
+                onClick={handleSignInFromMenu}
                 disabled={loading}
                 className="btn solid"
-                style={{ width: '100%', height: '44px', fontSize: '12px', justifyContent: 'center', gap: '10px' }}
+                style={btnPrimary}
               >
-                {loading ? 'One sec...' : 'Join in'}
+                {loading ? 'One sec...' : 'Sign in'}
                 {!loading && <span className="btn-arrow">→</span>}
               </button>
+              <p className="mono-label" style={{ color: 'var(--fg-4)', fontSize: '10px', margin: '8px 0 20px' }}>
+                Already have an account — active session or name + PIN
+              </p>
+
               <button
                 type="button"
-                onClick={() => {
-                  setStep('recover')
-                  setError('')
-                }}
+                onClick={handleStartCreate}
+                disabled={loading}
                 className="btn"
-                style={{
-                  width: '100%',
-                  marginTop: '12px',
-                  height: '32px',
-                  justifyContent: 'center',
-                  fontSize: '10px',
-                  color: 'var(--fg-3)',
-                }}
+                style={btnPrimary}
               >
-                Already played? Recover with name + PIN
+                {loading ? 'One sec...' : 'Create account'}
+                {!loading && <span className="btn-arrow">→</span>}
               </button>
+              <p className="mono-label" style={{ color: 'var(--fg-4)', fontSize: '10px', marginTop: '8px' }}>
+                First time here — new name, photo and PIN
+              </p>
             </div>
           )}
 
-          {step === 'recover' && (
-            <form onSubmit={handleRecover}>
+          {mode === 'sign-in' && (
+            <form onSubmit={handleSignIn}>
               <label className="mono-label" style={{ display: 'block', color: 'var(--fg-3)', marginBottom: '8px' }}>
                 Your name
               </label>
@@ -296,43 +339,34 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
                   setRecoverPin(e.target.value.replace(/\D/g, '').slice(0, RECOVERY_PIN_MAX))
                   setError('')
                 }}
-                className={`input${error ? ' error' : ''}`}
+                className="input"
                 placeholder="4–6 digits"
                 required
                 maxLength={RECOVERY_PIN_MAX}
                 style={{ marginBottom: '20px', fontFamily: 'var(--font-mono)', letterSpacing: '0.2em' }}
               />
 
-              {error && (
-                <p className="mono-label" style={{ color: 'var(--color-contrast)', marginBottom: '16px' }}>
-                  {error}
-                </p>
-              )}
-
               <button
                 type="submit"
                 disabled={loading || !recoverName.trim() || !isValidRecoveryPin(recoverPin)}
                 className="btn solid"
-                style={{ width: '100%', height: '44px', fontSize: '12px', justifyContent: 'center', gap: '10px' }}
+                style={btnPrimary}
               >
-                {loading ? 'Recovering...' : 'Recover account'}
+                {loading ? 'Signing in...' : 'Enter'}
                 {!loading && <span className="btn-arrow">→</span>}
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setStep('enter')
-                  setError('')
-                }}
+                onClick={goToMenu}
                 className="btn"
-                style={{ width: '100%', marginTop: '12px', height: '32px', justifyContent: 'center' }}
+                style={btnSecondary}
               >
-                Back
+                Back to menu
               </button>
             </form>
           )}
 
-          {step === 'onboarding' && (
+          {mode === 'create' && (
             <form onSubmit={handleOnboardingSubmit}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
                 <button
@@ -380,7 +414,7 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
                   setDisplayName(e.target.value)
                   setError('')
                 }}
-                className={`input${error ? ' error' : ''}`}
+                className="input"
                 placeholder="How you appear on the leaderboard"
                 autoComplete="nickname"
                 autoFocus
@@ -390,7 +424,7 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
               />
 
               <label className="mono-label" style={{ display: 'block', color: 'var(--fg-3)', marginBottom: '8px' }}>
-                Recovery PIN
+                PIN
               </label>
               <input
                 type="password"
@@ -427,12 +461,6 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
                 style={{ marginBottom: '20px', fontFamily: 'var(--font-mono)', letterSpacing: '0.2em' }}
               />
 
-              {error && (
-                <p className="mono-label" style={{ color: 'var(--color-contrast)', marginBottom: '16px' }}>
-                  {error}
-                </p>
-              )}
-
               <button
                 type="submit"
                 disabled={
@@ -444,10 +472,18 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
                   recoveryPin !== confirmRecoveryPin
                 }
                 className="btn solid"
-                style={{ width: '100%', height: '44px', fontSize: '12px', justifyContent: 'center', gap: '10px' }}
+                style={btnPrimary}
               >
                 {isSaving ? 'Saving...' : 'Start picking'}
                 {!isSaving && <span className="btn-arrow">→</span>}
+              </button>
+              <button
+                type="button"
+                onClick={goToMenu}
+                className="btn"
+                style={btnSecondary}
+              >
+                Back to menu
               </button>
             </form>
           )}
@@ -467,9 +503,6 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
             </span>
             <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
               name + photo + PIN
-            </span>
-            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
-              {' '}— recover with name + PIN if you lose this device.
             </span>
           </div>
         </div>
