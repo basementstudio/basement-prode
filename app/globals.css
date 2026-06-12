@@ -400,26 +400,6 @@
   }
 }
 
-@utility otp-input {
-  width: 56px;
-  height: 64px;
-  border: 1px solid var(--fg-4);
-  background: transparent;
-  color: var(--fg-1);
-  font-family: var(--font-mono);
-  font-size: 28px;
-  font-weight: 700;
-  text-align: center;
-  letter-spacing: 0;
-  outline: none;
-  transition: border-color var(--duration-fast) var(--ease-base);
-  caret-color: var(--color-contrast);
-
-  &:focus {
-    border-color: var(--color-contrast);
-  }
-}
-
 /* ---- Marcador ---- */
 
 @utility stepper-btn {
