@@ -33,7 +33,7 @@ function SceneLights({ accent }: { accent: string }) {
 }
 
 export function PrizeScene({ prize, animate }: PrizeSceneProps) {
-  const { invalidate, camera } = useThree()
+  const { invalidate, camera, gl } = useThree()
   const model = PRIZE_MODELS[prize.id]
 
   useEffect(() => {
@@ -42,6 +42,14 @@ export function PrizeScene({ prize, animate }: PrizeSceneProps) {
     camera.updateProjectionMatrix()
     invalidate()
   }, [camera, invalidate, model.cameraZ])
+
+  useEffect(() => {
+    const dom = gl.domElement
+    dom.style.cursor = 'grab'
+    return () => {
+      dom.style.cursor = ''
+    }
+  }, [gl])
 
   return (
     <>
@@ -77,6 +85,12 @@ export function PrizeScene({ prize, animate }: PrizeSceneProps) {
         rotateSpeed={0.85}
         dampingFactor={0.08}
         enableDamping
+        onStart={() => {
+          gl.domElement.style.cursor = 'grabbing'
+        }}
+        onEnd={() => {
+          gl.domElement.style.cursor = 'grab'
+        }}
       />
     </>
   )
