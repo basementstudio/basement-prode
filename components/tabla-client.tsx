@@ -1,22 +1,17 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserAvatar } from '@/components/user-avatar'
 import { NameTakenDialog } from '@/components/name-taken-dialog'
-import { updateProfile, updateAvatar } from '@/lib/actions'
+import { LeaderboardNameBadge } from '@/components/leaderboard-name-badge'
+import { LeaderboardTable } from '@/components/leaderboard-table'
+import { updateProfile, updateAvatar, type LeaderboardPlayer } from '@/lib/actions'
 import { compressImageFile } from '@/lib/avatar-utils'
+import { buildWorstBoardPlayers } from '@/lib/leaderboard-stats'
 import { cn } from '@/lib/utils'
 import { PRIZES_BY_RANK } from '@/lib/prizes'
 import { PrizeShowcase } from '@/components/prizes/prize-showcase'
-
-interface Player {
-  id: string
-  name: string
-  avatarUrl: string | null
-  points: number
-  rank: number
-}
 
 interface MyProfile {
   userId: string
@@ -28,23 +23,33 @@ interface MyProfile {
 }
 
 interface Props {
-  players: Player[]
+  players: LeaderboardPlayer[]
   myProfile: MyProfile
 }
+
+type BoardMode = 'ranking' | 'worst'
 
 const PRIZES = PRIZES_BY_RANK
 
 function PlayerIdentity({
   name,
   subtitle,
+  rank,
+  playerCount,
 }: {
   name: string
   subtitle: string
+  rank?: number
+  playerCount?: number
 }) {
   return (
     <div className="player-identity">
       <div className="player-identity-name">
-        <span>{name}</span>
+        {rank != null && playerCount != null ? (
+          <LeaderboardNameBadge name={name} rank={rank} playerCount={playerCount} />
+        ) : (
+          <span>{name}</span>
+        )}
       </div>
       <div className="mono-label player-identity-sub">{subtitle}</div>
     </div>
@@ -55,10 +60,12 @@ function PodiumCell({
   player,
   myId,
   rank,
+  playerCount,
 }: {
-  player: Player | undefined
+  player: LeaderboardPlayer | undefined
   myId: string
   rank: number
+  playerCount: number
 }) {
   const prize = PRIZES[rank]
   const colorClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze'
@@ -82,6 +89,8 @@ function PodiumCell({
           <PlayerIdentity
             name={player.name}
             subtitle={`#${player.rank}`}
+            rank={player.rank}
+            playerCount={playerCount}
           />
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
             <div style={{ fontSize: '24px', fontWeight: 700, color: borderColor, lineHeight: 1 }}>{player.points}</div>
@@ -98,6 +107,7 @@ function PodiumCell({
 export function TablaClient({ players, myProfile }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [boardMode, setBoardMode] = useState<BoardMode>('ranking')
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(myProfile.resolvedName)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(myProfile.avatarUrl)
@@ -112,6 +122,8 @@ export function TablaClient({ players, myProfile }: Props) {
 
   const myRank = players.find(p => p.id === myProfile.userId)?.rank
   const myPoints = players.find(p => p.id === myProfile.userId)?.points ?? 0
+  const worstPlayers = useMemo(() => buildWorstBoardPlayers(players), [players])
+  const myWorstRank = worstPlayers.find(p => p.id === myProfile.userId)?.worstRank
 
   function handleNameSave() {
     const trimmed = nameValue.trim()
@@ -279,7 +291,7 @@ export function TablaClient({ players, myProfile }: Props) {
 
       <PrizeShowcase />
 
-      {players.length >= 1 && (
+      {boardMode === 'ranking' && players.length >= 1 && (
         <div style={{ marginBottom: '32px' }}>
           <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '12px' }}>
             — PODIUM
@@ -291,6 +303,7 @@ export function TablaClient({ players, myProfile }: Props) {
                 rank={rank}
                 player={top3[rank - 1]}
                 myId={myProfile.userId}
+                playerCount={players.length}
               />
             ))}
           </div>
@@ -299,68 +312,45 @@ export function TablaClient({ players, myProfile }: Props) {
 
       <div>
         <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '12px' }}>
-          — FULL RANKING
+          {boardMode === 'ranking' ? '— FULL RANKING' : '— WORST BOARD'}
         </div>
-        <div className="cell tabla-table-wrap">
-          <table className="dtable">
-            <thead>
-              <tr>
-                <th style={{ width: '48px' }}>POS</th>
-                <th>PLAYER</th>
-                <th>PRIZE</th>
-                <th style={{ textAlign: 'right' }}>PTS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {players.map(player => {
-                const isMe = player.id === myProfile.userId
-                const prize = PRIZES[player.rank]
-                return (
-                  <tr key={player.id} className={isMe ? 'my-row' : ''}>
-                    <td>
-                      <span className="mono-label" style={{ color: player.rank <= 3 ? 'var(--color-contrast)' : 'var(--fg-3)' }}>
-                        {player.rank}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="table-player-row">
-                        <UserAvatar name={player.name} imageUrl={player.avatarUrl} highlight={isMe} />
-                        <PlayerIdentity
-                          name={player.name}
-                          subtitle={`${player.points} PTS`}
-                        />
-                      </div>
-                    </td>
-                    <td>
-                      {prize ? (
-                        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>{prize.desc}</span>
-                      ) : (
-                        <span className="mono-label" style={{ color: 'var(--fg-4)' }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <span style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '16px',
-                        fontWeight: 700,
-                        color: isMe ? 'var(--fg-1)' : 'var(--fg-2)',
-                      }}>
-                        {player.points}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-              {players.length === 0 && (
-                <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', color: 'var(--fg-4)', padding: '32px' }}>
-                    <span className="mono-label">No players yet</span>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+        <div className="view-mode-tabs tabla-board-tabs">
+          <button
+            type="button"
+            className={cn('view-mode-tab', boardMode === 'ranking' && 'is-active')}
+            aria-pressed={boardMode === 'ranking'}
+            onClick={() => setBoardMode('ranking')}
+          >
+            Ranking
+            <span className="view-mode-tab-count">{players.length}</span>
+          </button>
+          <button
+            type="button"
+            className={cn('view-mode-tab', boardMode === 'worst' && 'is-active')}
+            aria-pressed={boardMode === 'worst'}
+            onClick={() => setBoardMode('worst')}
+          >
+            <span className="tabla-tab-label-full">Worst board</span>
+            <span className="tabla-tab-label-short">Worst</span>
+            {myWorstRank != null && (
+              <span className="view-mode-tab-count">#{myWorstRank}</span>
+            )}
+          </button>
         </div>
+
+        {boardMode === 'worst' && (
+          <p className="tabla-board-desc mono-label">
+            Lowest win rate on top. Only scored matches where you submitted a prediction.
+          </p>
+        )}
+
+        <LeaderboardTable
+          mode={boardMode}
+          rankingPlayers={players}
+          worstPlayers={worstPlayers}
+          myUserId={myProfile.userId}
+        />
       </div>
 
       <NameTakenDialog

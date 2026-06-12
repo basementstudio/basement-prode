@@ -11,6 +11,7 @@ import {
 import { MatchCard } from '@/components/match-card'
 import { cn } from '@/lib/utils'
 import type { Match } from '@/lib/wc2026-data'
+import type { RevealedMatchPrediction } from '@/lib/match-predictions'
 
 type PredMap = Record<string, { home: number; away: number }>
 
@@ -27,6 +28,7 @@ interface GroupMatchesCarouselProps {
   onGroupMatchComplete: (matchId: string) => void
   onGroupMatchActivate: (groupIndex: number, matchIndex: number) => void
   onApiReady: (api: CarouselApi) => void
+  communityPicksByMatch: Record<string, RevealedMatchPrediction[]>
 }
 
 export function GroupMatchesCarousel({
@@ -42,6 +44,7 @@ export function GroupMatchesCarousel({
   onGroupMatchComplete,
   onGroupMatchActivate,
   onApiReady,
+  communityPicksByMatch,
 }: GroupMatchesCarouselProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const groupTabsRef = useRef<HTMLElement>(null)
@@ -143,6 +146,7 @@ export function GroupMatchesCarousel({
                       saveWhenComplete={isActive}
                       onActivate={() => onGroupMatchActivate(groupIndex, matchIndex)}
                       onSaved={() => onGroupMatchComplete(match.id)}
+                      communityPicks={communityPicksByMatch[match.id] ?? []}
                     />
                   )
                 })}

@@ -1,4 +1,4 @@
-import { getPredictions } from '@/lib/actions'
+import { getPredictions, getRevealedPredictionsByMatchIds } from '@/lib/actions'
 import { MatchesStatusClient } from '@/components/matches-status-client'
 import { getGroupStageData } from '@/lib/wc2026/get-matches'
 
@@ -7,6 +7,7 @@ export default async function ConcluidosPage() {
     getPredictions(),
     getGroupStageData(),
   ])
+  const communityPicksByMatch = await getRevealedPredictionsByMatchIds(matches.map(m => m.id))
 
   return (
     <MatchesStatusClient
@@ -14,6 +15,7 @@ export default async function ConcluidosPage() {
       matches={matches}
       dataSource={source}
       filter="finished"
+      communityPicksByMatch={communityPicksByMatch}
     />
   )
 }

@@ -10,6 +10,7 @@ import {
 import type { MatchDataSource } from '@/lib/wc2026/get-matches'
 import { formatTimezoneLabel, getUserTimezone } from '@/lib/wc2026/format-local'
 import { savePrediction } from '@/lib/actions'
+import type { RevealedMatchPrediction } from '@/lib/match-predictions'
 import { MatchCard } from '@/components/match-card'
 
 type StatusFilter = 'live' | 'finished'
@@ -20,6 +21,7 @@ interface Props {
   matches: Match[]
   dataSource: MatchDataSource
   filter: StatusFilter
+  communityPicksByMatch: Record<string, RevealedMatchPrediction[]>
 }
 
 const PAGE_COPY: Record<StatusFilter, { num: string; title: string; description: string; empty: string }> = {
@@ -37,7 +39,13 @@ const PAGE_COPY: Record<StatusFilter, { num: string; title: string; description:
   },
 }
 
-export function MatchesStatusClient({ initialPredictions, matches, dataSource, filter }: Props) {
+export function MatchesStatusClient({
+  initialPredictions,
+  matches,
+  dataSource,
+  filter,
+  communityPicksByMatch,
+}: Props) {
   const router = useRouter()
   const [predictions, setPredictions] = useState<PredMap>(initialPredictions)
   const [now, setNow] = useState(() => new Date())
@@ -100,6 +108,7 @@ export function MatchesStatusClient({ initialPredictions, matches, dataSource, f
               onSave={handleSave}
               now={now}
               userTz={userTz}
+              communityPicks={communityPicksByMatch[match.id] ?? []}
             />
           ))}
         </div>

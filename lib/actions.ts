@@ -5,10 +5,12 @@ import { db } from '@/lib/db'
 import { predictions, userProfiles, user } from '@/lib/db/schema'
 import { isMatchLocked, getMatchKickoffMs } from '@/lib/wc2026-data'
 import { getMatchByIdAsync, getGroupStageMatches } from '@/lib/wc2026/get-matches'
+import { buildLeaderboardPlayers, type LeaderboardPlayer } from '@/lib/leaderboard-stats'
+import { buildRevealedMatchPredictions, type RevealedMatchPrediction } from '@/lib/match-predictions'
 import { calcPoints } from '@/lib/scoring'
 import { isValidScore } from '@/lib/score'
 import type { Match } from '@/lib/wc2026/types'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
@@ -18,7 +20,9 @@ import { isDisplayNameTaken, upsertProfile } from '@/lib/user-profile'
 
 async function getUserId() {
   const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) throw new Error('Unauthorized')
+  if (!session?.user) {
+    throw new Error('Session expired — sign in again with your name and PIN.')
+  }
   return session.user.id
 }
 
@@ -73,89 +77,114 @@ export async function savePrediction(
   awayScore: number,
   clientNowMs?: number,
 ) {
-  const userId = await getUserId()
+  let userId: string | undefined
 
-  const match = await getMatchByIdAsync(matchId)
-  if (!match) throw new Error('Match not found')
+  try {
+    userId = await getUserId()
 
-  const now = clientNowMs != null ? new Date(clientNowMs) : new Date()
-  if (isMatchLocked(match, now)) throw new Error('This match has started and can no longer be edited')
+    const match = await getMatchByIdAsync(matchId)
+    if (!match) throw new Error('Match not found')
 
-  if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
-    throw new Error('Invalid score: use integers from 0 to 99')
-  }
+    const now = clientNowMs != null ? new Date(clientNowMs) : new Date()
+    if (isMatchLocked(match, now)) {
+      throw new Error('This match has started and can no longer be edited')
+    }
 
-  const existing = await db
-    .select()
-    .from(predictions)
-    .where(and(eq(predictions.userId, userId), eq(predictions.matchId, matchId)))
-    .limit(1)
+    if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
+      throw new Error('Invalid score: use integers from 0 to 99')
+    }
 
-  if (existing.length > 0) {
-    await db
-      .update(predictions)
-      .set({ homeScore, awayScore, updatedAt: new Date() })
+    const existing = await db
+      .select()
+      .from(predictions)
       .where(and(eq(predictions.userId, userId), eq(predictions.matchId, matchId)))
-  } else {
-    await db.insert(predictions).values({
-      id: nanoid(),
+      .limit(1)
+
+    if (existing.length > 0) {
+      await db
+        .update(predictions)
+        .set({ homeScore, awayScore, updatedAt: new Date() })
+        .where(and(eq(predictions.userId, userId), eq(predictions.matchId, matchId)))
+    } else {
+      await db.insert(predictions).values({
+        id: nanoid(),
+        userId,
+        matchId,
+        homeScore,
+        awayScore,
+      })
+    }
+
+    revalidatePath('/pronosticos')
+    revalidatePath('/en-vivo')
+    revalidatePath('/concluidos')
+    revalidatePath('/tabla')
+    revalidatePath('/aciertos')
+  } catch (err) {
+    console.error('[savePrediction] failed', {
       userId,
       matchId,
       homeScore,
       awayScore,
+      error: err instanceof Error ? err.message : err,
     })
+    if (err instanceof Error) throw err
+    throw new Error('Could not save prediction')
   }
-  revalidatePath('/pronosticos')
-  revalidatePath('/en-vivo')
-  revalidatePath('/concluidos')
-  revalidatePath('/tabla')
-  revalidatePath('/aciertos')
 }
 
-export async function getLeaderboard() {
+export type { LeaderboardPlayer } from '@/lib/leaderboard-stats'
+export type { RevealedMatchPrediction } from '@/lib/match-predictions'
+
+export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
   const allUsers = await db.select().from(user)
   const allPreds = await db.select().from(predictions)
   const allProfiles = await db.select().from(userProfiles)
 
-  // Only score matches that have a real result (from data file)
   const allMatches = await getGroupStageMatches()
-  const playedMatches = allMatches.filter(m => m.result)
+  const playedMatches = allMatches
+    .filter(m => m.result != null)
+    .map(m => ({ id: m.id, result: m.result! }))
 
-  const scores: Record<string, number> = {}
-  for (const u of allUsers) {
-    scores[u.id] = 0
+  return buildLeaderboardPlayers(allUsers, allPreds, allProfiles, playedMatches)
+}
+
+export async function getRevealedPredictionsByMatchIds(
+  matchIds: string[],
+): Promise<Record<string, RevealedMatchPrediction[]>> {
+  const viewerUserId = await getUserId()
+  const uniqueIds = [...new Set(matchIds)]
+  if (uniqueIds.length === 0) return {}
+
+  const now = new Date()
+  const allMatches = await getGroupStageMatches()
+  const matchMap = new Map(allMatches.map(m => [m.id, m]))
+  const relevantIds = uniqueIds.filter(id => matchMap.has(id))
+
+  if (relevantIds.length === 0) return {}
+
+  const [allPreds, allProfiles, allUsers] = await Promise.all([
+    db.select().from(predictions).where(inArray(predictions.matchId, relevantIds)),
+    db.select().from(userProfiles),
+    db.select().from(user),
+  ])
+
+  const result: Record<string, RevealedMatchPrediction[]> = {}
+  for (const matchId of relevantIds) {
+    const match = matchMap.get(matchId)!
+    const locked = isMatchLocked(match, now)
+    const matchPreds = allPreds.filter(p => p.matchId === matchId)
+    result[matchId] = buildRevealedMatchPredictions(
+      match,
+      matchPreds,
+      viewerUserId,
+      allUsers,
+      allProfiles,
+      locked,
+    )
   }
 
-  for (const match of playedMatches) {
-    const result = match.result!
-    for (const pred of allPreds.filter(p => p.matchId === match.id)) {
-      const points = calcPoints(
-        { home: pred.homeScore, away: pred.awayScore },
-        result,
-      )
-      scores[pred.userId] = (scores[pred.userId] || 0) + points
-    }
-  }
-
-  const profileMap: Record<string, { displayName: string | null; avatarUrl: string | null }> = {}
-  for (const p of allProfiles) {
-    profileMap[p.userId] = { displayName: p.displayName, avatarUrl: p.avatarUrl }
-  }
-
-  return allUsers
-    .filter(u => isProfileComplete(profileMap[u.id]))
-    .map(u => ({
-      id: u.id,
-      name: resolveDisplayName({
-        displayName: profileMap[u.id]?.displayName,
-        name: u.name,
-        email: u.email,
-      }),
-      avatarUrl: profileMap[u.id]?.avatarUrl || null,
-      points: scores[u.id] || 0,
-    }))
-    .sort((a, b) => b.points - a.points)
-    .map((u, i) => ({ ...u, rank: i + 1 }))
+  return result
 }
 
 export type ScoredPrediction = {

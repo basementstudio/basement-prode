@@ -50,6 +50,7 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [uploadError, setUploadError] = useState('')
+  const [photoError, setPhotoError] = useState('')
   const [nameTakenOpen, setNameTakenOpen] = useState(false)
   const [isUploading, startUpload] = useTransition()
   const [isSaving, startSaving] = useTransition()
@@ -58,6 +59,13 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
     setMode('menu')
     setError('')
     setUploadError('')
+    setPhotoError('')
+  }
+
+  function markPhotoRequiredIfMissing() {
+    if (!avatarPreview) {
+      setPhotoError('Upload a profile photo to continue.')
+    }
   }
 
   async function handleSignInFromMenu() {
@@ -97,6 +105,7 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
         return
       }
       await syncAuthSessionAndRefresh(router)
+      setPhotoError('')
       setMode('create')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not create account. Try again.')
@@ -169,6 +178,7 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
         const dataUrl = await compressImageFile(file)
         setAvatarPreview(dataUrl)
         setUploadError('')
+        setPhotoError('')
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'Could not upload photo')
         setAvatarPreview(null)
@@ -186,6 +196,7 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
       return
     }
     if (!avatarPreview) {
+      setPhotoError('Upload a profile photo to continue.')
       setError('Upload a profile photo.')
       return
     }
@@ -343,8 +354,14 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
                 placeholder="4–6 digits"
                 required
                 maxLength={RECOVERY_PIN_MAX}
-                style={{ marginBottom: '20px', fontFamily: 'var(--font-mono)', letterSpacing: '0.2em' }}
+                style={{ marginBottom: '8px', fontFamily: 'var(--font-mono)', letterSpacing: '0.2em' }}
               />
+              <p
+                className="mono-label"
+                style={{ color: 'var(--fg-4)', fontSize: '10px', marginBottom: '20px', lineHeight: 1.4 }}
+              >
+                The PIN you chose when you signed up — use it with your name to recover your session on another device or browser.
+              </p>
 
               <button
                 type="submit"
@@ -368,6 +385,9 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
 
           {mode === 'create' && (
             <form onSubmit={handleOnboardingSubmit}>
+              <label className="mono-label" style={{ display: 'block', color: 'var(--fg-3)', marginBottom: '12px' }}>
+                Profile photo <span style={{ color: 'var(--color-contrast)' }}>*</span>
+              </label>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
                 <button
                   type="button"
@@ -375,6 +395,8 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
                   onClick={handleAvatarSelect}
                   disabled={isUploading}
                   aria-label="Upload profile photo"
+                  aria-invalid={photoError ? true : undefined}
+                  aria-describedby="photo-field-hint"
                 >
                   <UserAvatar name={displayName || 'Player'} imageUrl={avatarPreview} size="lg" highlight />
                 </button>
@@ -397,8 +419,22 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
                   {isUploading ? 'Uploading…' : avatarPreview ? 'Change photo' : 'Upload photo'}
                 </button>
 
+                <p
+                  id="photo-field-hint"
+                  className="mono-label"
+                  role={photoError ? 'alert' : undefined}
+                  style={{
+                    color: photoError ? 'var(--color-contrast)' : 'var(--fg-4)',
+                    marginTop: '8px',
+                    fontSize: '10px',
+                    textAlign: 'center',
+                  }}
+                >
+                  {photoError || 'Required — shown on the leaderboard. JPEG, PNG or WebP.'}
+                </p>
+
                 {uploadError && (
-                  <p className="mono-label" style={{ color: 'var(--color-contrast)', marginTop: '8px', fontSize: '10px' }}>
+                  <p className="mono-label" id="photo-field-error" role="alert" style={{ color: 'var(--color-contrast)', marginTop: '8px', fontSize: '10px' }}>
                     {uploadError}
                   </p>
                 )}
@@ -414,6 +450,7 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
                   setDisplayName(e.target.value)
                   setError('')
                 }}
+                onBlur={markPhotoRequiredIfMissing}
                 className="input"
                 placeholder="How you appear on the leaderboard"
                 autoComplete="nickname"
@@ -439,8 +476,14 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
                 placeholder="4–6 digits"
                 required
                 maxLength={RECOVERY_PIN_MAX}
-                style={{ marginBottom: '12px', fontFamily: 'var(--font-mono)', letterSpacing: '0.2em' }}
+                style={{ marginBottom: '8px', fontFamily: 'var(--font-mono)', letterSpacing: '0.2em' }}
               />
+              <p
+                className="mono-label"
+                style={{ color: 'var(--fg-4)', fontSize: '10px', marginBottom: '12px', lineHeight: 1.4 }}
+              >
+                Choose 4–6 digits you will remember. You will use this PIN with your name to sign in again if you switch devices or lose your session.
+              </p>
 
               <label className="mono-label" style={{ display: 'block', color: 'var(--fg-3)', marginBottom: '8px' }}>
                 Confirm PIN
@@ -473,10 +516,16 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
                 }
                 className="btn solid"
                 style={btnPrimary}
+                aria-describedby={!avatarPreview ? 'photo-field-hint' : undefined}
               >
                 {isSaving ? 'Saving...' : 'Start picking'}
                 {!isSaving && <span className="btn-arrow">→</span>}
               </button>
+              {!avatarPreview && displayName.trim() && !isSaving && !isUploading && (
+                <p className="mono-label" role="status" style={{ color: 'var(--fg-3)', marginTop: '10px', fontSize: '10px', textAlign: 'center' }}>
+                  Add a photo above to enable Start picking.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={goToMenu}
