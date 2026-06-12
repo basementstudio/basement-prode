@@ -1,7 +1,9 @@
 import { betterAuth } from 'better-auth'
-import { emailOTP } from 'better-auth/plugins'
+import { nextCookies } from 'better-auth/next-js'
+import { anonymous } from 'better-auth/plugins'
+import { onboardingPlugin } from '@/lib/auth-onboarding-plugin'
+import { usernameRecoverPlugin } from '@/lib/auth-recover-plugin'
 import { pool } from '@/lib/db'
-import { sendOtpEmail } from '@/lib/email/send-otp-email'
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
@@ -14,19 +16,16 @@ export const auth = betterAuth({
         ? `https://${process.env.VERCEL_URL}`
         : process.env.V0_RUNTIME_URL),
   plugins: [
-    emailOTP({
-      resendStrategy: 'reuse',
-      async sendVerificationOTP({ email, otp, type }) {
-        try {
-          await sendOtpEmail({ email, otp, type })
-        } catch (err) {
-          console.error('[auth] Error al enviar OTP por email:', err)
-          throw err
-        }
+    anonymous({
+      emailDomainName: 'prode.local',
+      generateRandomEmail: () => {
+        const id = crypto.randomUUID()
+        return `guest-${id}@prode.local`
       },
-      otpLength: 6,
-      expiresIn: 600,
     }),
+    usernameRecoverPlugin(),
+    onboardingPlugin(),
+    nextCookies(),
   ],
   trustedOrigins: [
     ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),

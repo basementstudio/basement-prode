@@ -28,7 +28,7 @@ function getSubject(type: OtpEmailType): string {
 function buildHtml(otp: string, type: OtpEmailType): string {
   const action =
     type === 'sign-in'
-      ? 'Enter this code to sign in to the pool.'
+      ? 'Enter this code to sign in to the Basement prode.'
       : type === 'email-verification'
         ? 'Use this code to verify your email.'
         : type === 'change-email'

@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:wipe": "bun scripts/wipe-db.ts",
+    "db:reset": "bun scripts/reset-db.ts",
+    "db:migrate": "bun scripts/migrate.ts",
+    "db:migrate-pin": "bun scripts/migrate.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

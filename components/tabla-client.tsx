@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserAvatar } from '@/components/user-avatar'
+import { NameTakenDialog } from '@/components/name-taken-dialog'
 import { updateProfile, updateAvatar } from '@/lib/actions'
 import { compressImageFile } from '@/lib/avatar-utils'
 import { cn } from '@/lib/utils'
@@ -11,7 +12,6 @@ import { PrizeShowcase } from '@/components/prizes/prize-showcase'
 
 interface Player {
   id: string
-  email: string
   name: string
   avatarUrl: string | null
   points: number
@@ -81,7 +81,7 @@ function PodiumCell({
           <UserAvatar name={player.name} imageUrl={player.avatarUrl} highlight={isMe} />
           <PlayerIdentity
             name={player.name}
-            subtitle={player.email.split('@')[0]}
+            subtitle={`#${player.rank}`}
           />
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
             <div style={{ fontSize: '24px', fontWeight: 700, color: borderColor, lineHeight: 1 }}>{player.points}</div>
@@ -102,6 +102,7 @@ export function TablaClient({ players, myProfile }: Props) {
   const [nameValue, setNameValue] = useState(myProfile.resolvedName)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(myProfile.avatarUrl)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [nameTakenOpen, setNameTakenOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [isUploading, startUpload] = useTransition()
 
@@ -113,13 +114,22 @@ export function TablaClient({ players, myProfile }: Props) {
   const myPoints = players.find(p => p.id === myProfile.userId)?.points ?? 0
 
   function handleNameSave() {
-    if (nameValue.trim()) {
-      startTransition(async () => {
-        await updateProfile(nameValue.trim())
+    const trimmed = nameValue.trim()
+    if (!trimmed) return
+
+    startTransition(async () => {
+      try {
+        await updateProfile(trimmed)
         setEditingName(false)
         router.refresh()
-      })
-    }
+      } catch (err) {
+        if (err instanceof Error && err.message === 'NAME_TAKEN') {
+          setNameTakenOpen(true)
+          return
+        }
+        setUploadError(err instanceof Error ? err.message : 'Could not update name')
+      }
+    })
   }
 
   function handleAvatarSelect() {
@@ -162,7 +172,7 @@ export function TablaClient({ players, myProfile }: Props) {
             The leaderboard.
           </h1>
           <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '480px', lineHeight: '1.5' }}>
-            Overall pool ranking. First place wins basement merch. Points add up as matches are played.
+            Basement ranking for the internal prode. First place wins Basement merch. Points add up as matches are played.
           </p>
         </div>
         <div className="tabla-header-stats">
@@ -317,7 +327,7 @@ export function TablaClient({ players, myProfile }: Props) {
                         <UserAvatar name={player.name} imageUrl={player.avatarUrl} highlight={isMe} />
                         <PlayerIdentity
                           name={player.name}
-                          subtitle={player.email.split('@')[0]}
+                          subtitle={`${player.points} PTS`}
                         />
                       </div>
                     </td>
@@ -352,6 +362,12 @@ export function TablaClient({ players, myProfile }: Props) {
           </table>
         </div>
       </div>
+
+      <NameTakenDialog
+        open={nameTakenOpen}
+        name={nameValue.trim()}
+        onClose={() => setNameTakenOpen(false)}
+      />
     </div>
   )
 }

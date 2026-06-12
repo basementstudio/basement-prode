@@ -13,11 +13,48 @@ import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
 import { resolveDisplayName } from '@/lib/display-name'
+import { isProfileComplete, normalizeDisplayName } from '@/lib/profile'
+import { isDisplayNameTaken, upsertProfile } from '@/lib/user-profile'
 
 async function getUserId() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) throw new Error('Unauthorized')
   return session.user.id
+}
+
+async function getSessionUser() {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) return null
+  return session.user
+}
+
+export async function checkDisplayNameAvailable(displayName: string) {
+  const userId = await getUserId()
+  const normalized = normalizeDisplayName(displayName)
+  if (!normalized) {
+    return { available: false, error: 'Enter a name.' }
+  }
+  const taken = await isDisplayNameTaken(normalized, userId)
+  return { available: !taken, error: taken ? 'That name is already in use.' : null }
+}
+
+export async function getProfileStatus() {
+  const sessionUser = await getSessionUser()
+  if (!sessionUser) {
+    return { authenticated: false as const, complete: false }
+  }
+
+  const profile = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, sessionUser.id))
+    .limit(1)
+
+  return {
+    authenticated: true as const,
+    complete: isProfileComplete(profile[0]),
+    userId: sessionUser.id,
+  }
 }
 
 export async function getPredictions(): Promise<Record<string, { home: number; away: number }>> {
@@ -117,9 +154,9 @@ export async function getLeaderboard() {
   }
 
   return allUsers
+    .filter(u => isProfileComplete(profileMap[u.id]))
     .map(u => ({
       id: u.id,
-      email: u.email,
       name: resolveDisplayName({
         displayName: profileMap[u.id]?.displayName,
         name: u.name,
@@ -210,33 +247,18 @@ export async function getMyProfile() {
   }
 }
 
-async function upsertProfile(
-  userId: string,
-  data: { displayName?: string; avatarUrl?: string },
-) {
-  const existing = await db
-    .select()
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, userId))
-    .limit(1)
-
-  if (existing.length > 0) {
-    await db
-      .update(userProfiles)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(userProfiles.userId, userId))
-  } else {
-    await db.insert(userProfiles).values({
-      id: nanoid(),
-      userId,
-      ...data,
-    })
-  }
-}
-
 export async function updateProfile(displayName: string) {
   const userId = await getUserId()
-  await upsertProfile(userId, { displayName })
+  const normalized = normalizeDisplayName(displayName)
+
+  if (!normalized) throw new Error('Enter a name.')
+  if (normalized.length > 40) throw new Error('Name is too long (max 40 characters).')
+  if (await isDisplayNameTaken(normalized, userId)) {
+    throw new Error('NAME_TAKEN')
+  }
+
+  await db.update(user).set({ name: normalized, updatedAt: new Date() }).where(eq(user.id, userId))
+  await upsertProfile(userId, { displayName: normalized })
   revalidatePath('/tabla')
 }
 

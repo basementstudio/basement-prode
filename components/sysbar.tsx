@@ -1,9 +1,10 @@
 'use client'
 
-import { useSession } from '@/lib/auth-client'
+interface SysbarProps {
+  displayName?: string | null
+}
 
-export function Sysbar() {
-  const { data: session } = useSession()
+export function Sysbar({ displayName }: SysbarProps) {
 
   const playedCount = 0 // could be dynamic later
   const build = 'v0.1.0'
@@ -28,9 +29,9 @@ export function Sysbar() {
       {/* spacer */}
       <div className="flex-1" />
 
-      {session?.user && (
+      {displayName && (
         <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>
-          {session.user.email.toLowerCase()}
+          {displayName.toUpperCase()}
         </div>
       )}
       <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>

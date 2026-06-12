@@ -42,10 +42,10 @@ function PrizeCard({ rank }: { rank: number }) {
 
 export function PrizeShowcase() {
   return (
-    <section className="prize-showcase" aria-label="Pool prizes">
+    <section className="prize-showcase" aria-label="Basement prizes">
       <div className="mono-label prize-showcase-eyebrow">— PRIZES</div>
       <p className="prize-showcase-copy">
-        Top three in the pool take home Basement merch. 
+        Top three at Basement take home merch — if we make these real.
       </p>
 
       <div className="prize-showcase-desktop">

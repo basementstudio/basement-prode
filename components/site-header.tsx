@@ -108,12 +108,11 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
 
   async function handleSignOut() {
     await signOut()
-    router.push('/login')
+    router.push('/login?recover=1')
     router.refresh()
   }
 
-  const userName =
-    displayName || session?.user?.name || session?.user?.email?.split('@')[0] || '??'
+  const userName = displayName || session?.user?.name || 'Player'
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-black/95 backdrop-blur-sm">

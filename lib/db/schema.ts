@@ -7,6 +7,7 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('emailVerified').notNull().default(false),
   image: text('image'),
+  isAnonymous: boolean('isAnonymous').default(false),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })
@@ -63,6 +64,7 @@ export const userProfiles = pgTable('user_profiles', {
   userId: text('userId').notNull().unique(),
   displayName: text('displayName'),
   avatarUrl: text('avatarUrl'),
+  recoveryPinHash: text('recoveryPinHash'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })

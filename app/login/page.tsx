@@ -1,12 +1,15 @@
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { getProfileStatus } from '@/lib/actions'
 import { LoginForm } from './login-form'
-import { Sysbar } from '@/components/sysbar'
 
-export default async function LoginPage() {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (session?.user) redirect('/pronosticos')
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ recover?: string }>
+}) {
+  const status = await getProfileStatus()
+  const params = await searchParams
+  if (status.authenticated && status.complete) redirect('/pronosticos')
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -27,7 +30,15 @@ export default async function LoginPage() {
       </div>
 
       <main className="flex-1 flex items-center justify-center px-4 py-16">
-        <LoginForm />
+        <LoginForm
+          initialStep={
+            status.authenticated
+              ? 'onboarding'
+              : params.recover === '1'
+                ? 'recover'
+                : 'enter'
+          }
+        />
       </main>
     </div>
   )

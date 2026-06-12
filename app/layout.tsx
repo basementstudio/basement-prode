@@ -7,7 +7,7 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 
 export const metadata: Metadata = {
   title: 'PRODE/BASEMENT — World Cup 2026',
-  description: 'Internal prediction pool for World Cup 2026. Basement crew only.',
+  description: 'Basement internal World Cup 2026 prode. Just for fun.',
   generator: 'v0.app',
 }
 
