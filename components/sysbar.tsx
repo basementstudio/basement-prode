@@ -38,7 +38,7 @@ export function Sysbar({ displayName }: SysbarProps) {
         3 PTS WINNER
       </div>
       <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>
-        ×2 EXACT
+        ×2 EXACT · W/L
       </div>
       <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>
         {build}

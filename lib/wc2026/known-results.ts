@@ -1,6 +1,6 @@
 import type { Match } from '@/lib/wc2026/types'
 
-/** Resultados confirmados cuando la API no cubre WC 2026 (plan free). */
+/** Resultados confirmados cuando worldcup26.ir no tiene el partido aún. */
 export interface KnownResult {
   result: { home: number; away: number }
   statusShort?: string

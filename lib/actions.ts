@@ -129,22 +129,11 @@ export async function getLeaderboard() {
   for (const match of playedMatches) {
     const result = match.result!
     for (const pred of allPreds.filter(p => p.matchId === match.id)) {
-      // Exact score: 6 pts
-      if (pred.homeScore === result.home && pred.awayScore === result.away) {
-        scores[pred.userId] = (scores[pred.userId] || 0) + 6
-      }
-      // Correct winner/draw: 3 pts
-      else {
-        const predWinner =
-          pred.homeScore > pred.awayScore ? 'home' :
-          pred.homeScore < pred.awayScore ? 'away' : 'draw'
-        const realWinner =
-          result.home > result.away ? 'home' :
-          result.home < result.away ? 'away' : 'draw'
-        if (predWinner === realWinner) {
-          scores[pred.userId] = (scores[pred.userId] || 0) + 3
-        }
-      }
+      const points = calcPoints(
+        { home: pred.homeScore, away: pred.awayScore },
+        result,
+      )
+      scores[pred.userId] = (scores[pred.userId] || 0) + points
     }
   }
 

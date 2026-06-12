@@ -90,7 +90,7 @@ export function AciertosClient({
         Hits and points.
       </h1>
       <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5', marginBottom: '32px' }}>
-        Played matches with official results. 3 pts for correct winner or draw, 6 if you nailed the score.
+        Played matches with official results. 3 pts for correct winner or draw; 6 only if you nail the score on a win or loss (draws cap at 3).
       </p>
 
       <div className="aciertos-stats">

@@ -238,7 +238,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
             <span>{matches.length} MATCHES</span>
             <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
             <span style={{ color: dataSource === 'worldcup26' ? 'var(--color-contrast)' : 'var(--fg-3)' }}>
-              {dataSource === 'worldcup26' ? 'LIVE DATA' : dataSource === 'api-football' ? 'API-FOOTBALL' : 'LOCAL DATA'}
+              {dataSource === 'worldcup26' ? 'LIVE DATA' : 'LOCAL DATA'}
             </span>
           </div>
           <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px' }}>

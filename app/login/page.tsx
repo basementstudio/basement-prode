@@ -30,7 +30,7 @@ export default async function LoginPage({
         <div className="flex-1" />
         <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>NOT SIGNED IN</div>
         <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>3 PTS WINNER</div>
-        <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>×2 EXACT</div>
+        <div className="sysbar-item" style={{ borderRight: 'none', borderLeft: '1px solid var(--fg-4)' }}>×2 EXACT · W/L</div>
       </div>
 
       <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-16 pointer-events-none">
