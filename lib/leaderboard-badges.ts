@@ -1,6 +1,7 @@
 /** Swap these for custom workspace emojis without touching UI components. */
 export const LEADERBOARD_BADGE_FIRST = '🧙'
 export const LEADERBOARD_BADGE_LAST = '🥄'
+export const LEADERBOARD_BADGE_BURNED = '🥄'
 
 export type LeaderboardBadgeKind = 'first' | 'last'
 

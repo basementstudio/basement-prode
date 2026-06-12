@@ -12,6 +12,9 @@ export type LeaderboardPlayer = {
   predictionCount: number
   winRate: number
   rank: number
+  isBurned: boolean
+  burnVoteCount: number
+  viewerHasBurnVoted: boolean
 }
 
 export type WorstBoardPlayer = LeaderboardPlayer & {
@@ -20,7 +23,12 @@ export type WorstBoardPlayer = LeaderboardPlayer & {
 
 type UserRow = { id: string; name: string; email: string }
 type PredRow = { userId: string; matchId: string; homeScore: number; awayScore: number }
-type ProfileRow = { userId: string; displayName: string | null; avatarUrl: string | null }
+type ProfileRow = {
+  userId: string
+  displayName: string | null
+  avatarUrl: string | null
+  burnedAt: Date | null
+}
 type PlayedMatch = { id: string; result: { home: number; away: number } }
 
 export function isLeaderboardEligible(
@@ -36,6 +44,10 @@ export function buildLeaderboardPlayers(
   allPreds: PredRow[],
   allProfiles: ProfileRow[],
   playedMatches: PlayedMatch[],
+  burnSummary: {
+    burnVoteCountByUserId: Record<string, number>
+    viewerBurnVotedUserIds: Set<string>
+  },
 ): LeaderboardPlayer[] {
   const scores: Record<string, number> = {}
   const hitCounts: Record<string, number> = {}
@@ -96,6 +108,9 @@ export function buildLeaderboardPlayers(
         predictionCount,
         winRate,
         rank: 0,
+        isBurned: profile?.burnedAt != null,
+        burnVoteCount: burnSummary.burnVoteCountByUserId[u.id] ?? 0,
+        viewerHasBurnVoted: burnSummary.viewerBurnVotedUserIds.has(u.id),
       }
     })
     .sort((a, b) => {

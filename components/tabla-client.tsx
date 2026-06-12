@@ -36,17 +36,32 @@ function PlayerIdentity({
   subtitle,
   rank,
   playerCount,
+  isBurned,
 }: {
   name: string
   subtitle: string
   rank?: number
   playerCount?: number
+  isBurned?: boolean
 }) {
   return (
     <div className="player-identity">
       <div className="player-identity-name">
         {rank != null && playerCount != null ? (
-          <LeaderboardNameBadge name={name} rank={rank} playerCount={playerCount} />
+          <LeaderboardNameBadge
+            name={name}
+            rank={rank}
+            playerCount={playerCount}
+            isBurned={isBurned}
+          />
+        ) : isBurned ? (
+          <LeaderboardNameBadge
+            name={name}
+            rank={0}
+            playerCount={0}
+            isBurned
+            showRankingBadges={false}
+          />
         ) : (
           <span>{name}</span>
         )}
@@ -74,7 +89,7 @@ function PodiumCell({
 
   return (
     <div
-      className={cn('podium-cell', isMe && 'is-me')}
+      className={cn('podium-cell', isMe && 'is-me', player?.isBurned && 'is-burned')}
       style={{
         ...(!isMe ? { borderTopColor: borderColor, borderTopWidth: '2px' } : {}),
         minHeight: '120px',
@@ -91,6 +106,7 @@ function PodiumCell({
             subtitle={`#${player.rank}`}
             rank={player.rank}
             playerCount={playerCount}
+            isBurned={player.isBurned}
           />
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
             <div style={{ fontSize: '24px', fontWeight: 700, color: borderColor, lineHeight: 1 }}>{player.points}</div>

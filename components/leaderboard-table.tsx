@@ -1,6 +1,14 @@
+'use client'
+
 import { UserAvatar } from '@/components/user-avatar'
+import { LeaderboardBurnVoteBtn } from '@/components/leaderboard-burn-vote-btn'
 import { LeaderboardNameBadge } from '@/components/leaderboard-name-badge'
-import { formatWinRate, formatLeaderboardSubtitle, type LeaderboardPlayer, type WorstBoardPlayer } from '@/lib/leaderboard-stats'
+import {
+  formatWinRate,
+  formatLeaderboardSubtitle,
+  type LeaderboardPlayer,
+  type WorstBoardPlayer,
+} from '@/lib/leaderboard-stats'
 import { PRIZES_BY_RANK } from '@/lib/prizes'
 import { cn } from '@/lib/utils'
 
@@ -20,17 +28,32 @@ function PlayerIdentity({
   subtitle,
   rank,
   playerCount,
+  isBurned,
 }: {
   name: string
   subtitle: string
   rank?: number
   playerCount?: number
+  isBurned?: boolean
 }) {
   return (
     <div className="player-identity">
       <div className="player-identity-name">
         {rank != null && playerCount != null ? (
-          <LeaderboardNameBadge name={name} rank={rank} playerCount={playerCount} />
+          <LeaderboardNameBadge
+            name={name}
+            rank={rank}
+            playerCount={playerCount}
+            isBurned={isBurned}
+          />
+        ) : isBurned ? (
+          <LeaderboardNameBadge
+            name={name}
+            rank={0}
+            playerCount={0}
+            isBurned
+            showRankingBadges={false}
+          />
         ) : (
           <span>{name}</span>
         )}
@@ -68,7 +91,10 @@ export function LeaderboardTable({ mode, rankingPlayers, worstPlayers, myUserId 
               const prize = PRIZES[player.rank]
 
               return (
-                <tr key={player.id} className={isMe ? 'my-row' : ''}>
+                <tr
+                  key={player.id}
+                  className={cn(isMe && 'my-row', player.isBurned && 'is-burned')}
+                >
                   <td>
                     <span
                       className="mono-label"
@@ -85,7 +111,16 @@ export function LeaderboardTable({ mode, rankingPlayers, worstPlayers, myUserId 
                         subtitle={formatLeaderboardSubtitle(player)}
                         rank={player.rank}
                         playerCount={playerCount}
+                        isBurned={player.isBurned}
                       />
+                      {!isMe && (
+                        <LeaderboardBurnVoteBtn
+                          targetUserId={player.id}
+                          initialVoteCount={player.burnVoteCount}
+                          initialViewerHasVoted={player.viewerHasBurnVoted}
+                          isBurned={player.isBurned}
+                        />
+                      )}
                     </div>
                   </td>
                   <td>
@@ -116,7 +151,10 @@ export function LeaderboardTable({ mode, rankingPlayers, worstPlayers, myUserId 
               const isMe = player.id === myUserId
 
               return (
-                <tr key={player.id} className={isMe ? 'my-row' : ''}>
+                <tr
+                  key={player.id}
+                  className={cn(isMe && 'my-row', player.isBurned && 'is-burned')}
+                >
                   <td>
                     <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
                       {player.worstRank}
@@ -128,6 +166,7 @@ export function LeaderboardTable({ mode, rankingPlayers, worstPlayers, myUserId 
                       <PlayerIdentity
                         name={player.name}
                         subtitle={`${player.hitCount}/${player.playedCount} hits`}
+                        isBurned={player.isBurned}
                       />
                     </div>
                   </td>

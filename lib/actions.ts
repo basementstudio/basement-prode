@@ -2,7 +2,9 @@
 
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { predictions, userProfiles, user, predictionVotes } from '@/lib/db/schema'
+import { predictions, userProfiles, user, predictionVotes, accountBurnVotes } from '@/lib/db/schema'
+import { ACCOUNT_BURN_VOTE_THRESHOLD } from '@/lib/account-burn'
+import { summarizeAccountBurnVotes } from '@/lib/account-burn-votes'
 import { isMatchLocked, getMatchKickoffMs } from '@/lib/wc2026-data'
 import { getMatchByIdAsync, getGroupStageMatches } from '@/lib/wc2026/get-matches'
 import { buildLeaderboardPlayers, type LeaderboardPlayer } from '@/lib/leaderboard-stats'
@@ -137,16 +139,127 @@ export type { LeaderboardPlayer } from '@/lib/leaderboard-stats'
 export type { RevealedMatchPrediction } from '@/lib/match-predictions'
 
 export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
+  const viewerUserId = await getUserId()
   const allUsers = await db.select().from(user)
   const allPreds = await db.select().from(predictions)
   const allProfiles = await db.select().from(userProfiles)
+  const allBurnVotes = await db
+    .select({
+      targetUserId: accountBurnVotes.targetUserId,
+      voterId: accountBurnVotes.voterId,
+    })
+    .from(accountBurnVotes)
 
   const allMatches = await getGroupStageMatches()
   const playedMatches = allMatches
     .filter(m => m.result != null)
     .map(m => ({ id: m.id, result: m.result! }))
 
-  return buildLeaderboardPlayers(allUsers, allPreds, allProfiles, playedMatches)
+  const burnSummary = summarizeAccountBurnVotes(allBurnVotes, viewerUserId)
+
+  return buildLeaderboardPlayers(
+    allUsers,
+    allPreds,
+    allProfiles,
+    playedMatches,
+    burnSummary,
+  )
+}
+
+async function syncAccountBurnedAt(targetUserId: string, voteCount: number) {
+  const profile = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, targetUserId))
+    .limit(1)
+
+  const row = profile[0]
+  if (!row) return
+
+  const shouldBurn = voteCount >= ACCOUNT_BURN_VOTE_THRESHOLD
+  const isBurned = row.burnedAt != null
+
+  if (shouldBurn && !isBurned) {
+    await db
+      .update(userProfiles)
+      .set({ burnedAt: new Date(), updatedAt: new Date() })
+      .where(eq(userProfiles.userId, targetUserId))
+  } else if (!shouldBurn && isBurned) {
+    await db
+      .update(userProfiles)
+      .set({ burnedAt: null, updatedAt: new Date() })
+      .where(eq(userProfiles.userId, targetUserId))
+  }
+}
+
+export async function toggleAccountBurnVote(targetUserId: string): Promise<{
+  burnVoteCount: number
+  viewerHasBurnVoted: boolean
+  isBurned: boolean
+}> {
+  const voterId = await getUserId()
+
+  if (targetUserId === voterId) {
+    throw new Error('You cannot burn your own account')
+  }
+
+  const targetProfile = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, targetUserId))
+    .limit(1)
+
+  if (!targetProfile[0]) throw new Error('User not found')
+
+  const existing = await db
+    .select()
+    .from(accountBurnVotes)
+    .where(
+      and(
+        eq(accountBurnVotes.targetUserId, targetUserId),
+        eq(accountBurnVotes.voterId, voterId),
+      ),
+    )
+    .limit(1)
+
+  if (existing.length > 0) {
+    await db
+      .delete(accountBurnVotes)
+      .where(
+        and(
+          eq(accountBurnVotes.targetUserId, targetUserId),
+          eq(accountBurnVotes.voterId, voterId),
+        ),
+      )
+  } else {
+    await db.insert(accountBurnVotes).values({
+      id: nanoid(),
+      targetUserId,
+      voterId,
+    })
+  }
+
+  const votes = await db
+    .select({ voterId: accountBurnVotes.voterId })
+    .from(accountBurnVotes)
+    .where(eq(accountBurnVotes.targetUserId, targetUserId))
+
+  const burnVoteCount = votes.length
+  await syncAccountBurnedAt(targetUserId, burnVoteCount)
+
+  const updatedProfile = await db
+    .select({ burnedAt: userProfiles.burnedAt })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, targetUserId))
+    .limit(1)
+
+  revalidatePath('/tabla')
+
+  return {
+    burnVoteCount,
+    viewerHasBurnVoted: votes.some(v => v.voterId === voterId),
+    isBurned: updatedProfile[0]?.burnedAt != null,
+  }
 }
 
 export async function getRevealedPredictionsByMatchIds(

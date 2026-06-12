@@ -9,6 +9,7 @@ async function resetDb() {
   }
 
   await pool.query(`
+    DROP TABLE IF EXISTS account_burn_votes CASCADE;
     DROP TABLE IF EXISTS prediction_votes CASCADE;
     DROP TABLE IF EXISTS predictions CASCADE;
     DROP TABLE IF EXISTS user_profiles CASCADE;
@@ -92,9 +93,20 @@ async function resetDb() {
       "displayName" text,
       "avatarUrl" text,
       "recoveryPinHash" text,
+      "burnedAt" timestamp,
       "createdAt" timestamp NOT NULL DEFAULT now(),
       "updatedAt" timestamp NOT NULL DEFAULT now()
     );
+
+    CREATE TABLE account_burn_votes (
+      id text PRIMARY KEY NOT NULL,
+      "targetUserId" text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      "voterId" text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      "createdAt" timestamp NOT NULL DEFAULT now()
+    );
+
+    CREATE UNIQUE INDEX account_burn_votes_target_voter_unique
+      ON account_burn_votes ("targetUserId", "voterId");
   `)
 
   console.log('Database reset complete: all tables dropped and recreated empty.')

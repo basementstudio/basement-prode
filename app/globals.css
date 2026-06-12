@@ -1056,6 +1056,10 @@
   & tr.my-row .player-identity-name {
     font-weight: 600;
   }
+
+  & tr.is-burned td {
+    opacity: 0.72;
+  }
 }
 
 /* ---- Progreso ---- */
@@ -1494,10 +1498,61 @@
   }
 }
 
+@utility leaderboard-name-text--burned {
+  text-decoration: line-through;
+  color: var(--fg-3);
+}
+
+@utility leaderboard-burn-vote-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 8px;
+  margin-left: auto;
+  border: 1px solid var(--fg-4);
+  background: transparent;
+  color: var(--fg-3);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-base),
+    border-color var(--duration-fast) var(--ease-base),
+    color var(--duration-fast) var(--ease-base);
+
+  &:hover:not(:disabled) {
+    background: var(--color-gray-800);
+    color: var(--fg-1);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  &.is-active {
+    border-color: var(--color-contrast);
+    color: var(--color-contrast);
+    background: rgba(255, 77, 0, 0.08);
+  }
+
+  & .mono-label {
+    font-size: 10px;
+    line-height: 1;
+  }
+}
+
 @utility table-player-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex: 1;
+
+  & .player-identity {
+    flex: 1;
+    min-width: 0;
+  }
 
   & .player-identity-name {
     font-size: 14px;

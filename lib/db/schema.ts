@@ -65,9 +65,30 @@ export const userProfiles = pgTable('user_profiles', {
   displayName: text('displayName'),
   avatarUrl: text('avatarUrl'),
   recoveryPinHash: text('recoveryPinHash'),
+  burnedAt: timestamp('burnedAt'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })
+
+export const accountBurnVotes = pgTable(
+  'account_burn_votes',
+  {
+    id: text('id').primaryKey(),
+    targetUserId: text('targetUserId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    voterId: text('voterId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex('account_burn_votes_target_voter_unique').on(
+      table.targetUserId,
+      table.voterId,
+    ),
+  ],
+)
 
 export const predictionVotes = pgTable(
   'prediction_votes',
