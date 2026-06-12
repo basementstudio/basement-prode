@@ -1,7 +1,11 @@
 /**
  * Drops all tables and recreates schema from scratch. Run: bun run db:reset
  */
-import { pool } from '../lib/db'
+import { Pool } from 'pg'
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+})
 
 async function resetDb() {
   if (!process.env.DATABASE_URL) {
@@ -9,6 +13,8 @@ async function resetDb() {
   }
 
   await pool.query(`
+    DROP TABLE IF EXISTS account_burn_votes CASCADE;
+    DROP TABLE IF EXISTS prediction_votes CASCADE;
     DROP TABLE IF EXISTS predictions CASCADE;
     DROP TABLE IF EXISTS user_profiles CASCADE;
     DROP TABLE IF EXISTS session CASCADE;
@@ -75,15 +81,36 @@ async function resetDb() {
       "updatedAt" timestamp NOT NULL DEFAULT now()
     );
 
+    CREATE TABLE prediction_votes (
+      id text PRIMARY KEY NOT NULL,
+      "predictionId" text NOT NULL REFERENCES predictions(id) ON DELETE CASCADE,
+      "voterId" text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      "createdAt" timestamp NOT NULL DEFAULT now()
+    );
+
+    CREATE UNIQUE INDEX prediction_votes_prediction_voter_unique
+      ON prediction_votes ("predictionId", "voterId");
+
     CREATE TABLE user_profiles (
       id text PRIMARY KEY DEFAULT '',
       "userId" text NOT NULL UNIQUE,
       "displayName" text,
       "avatarUrl" text,
       "recoveryPinHash" text,
+      "burnedAt" timestamp,
       "createdAt" timestamp NOT NULL DEFAULT now(),
       "updatedAt" timestamp NOT NULL DEFAULT now()
     );
+
+    CREATE TABLE account_burn_votes (
+      id text PRIMARY KEY NOT NULL,
+      "targetUserId" text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      "voterId" text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      "createdAt" timestamp NOT NULL DEFAULT now()
+    );
+
+    CREATE UNIQUE INDEX account_burn_votes_target_voter_unique
+      ON account_burn_votes ("targetUserId", "voterId");
   `)
 
   console.log('Database reset complete: all tables dropped and recreated empty.')

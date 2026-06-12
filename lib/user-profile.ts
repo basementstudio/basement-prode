@@ -8,6 +8,19 @@ import { hashRecoveryPin } from '@/lib/recovery-pin-server'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
+export async function findProfileByDisplayName(displayName: string) {
+  const normalized = normalizeDisplayName(displayName).toLowerCase()
+  if (!normalized) return null
+
+  const profiles = await db.select().from(userProfiles)
+  return (
+    profiles.find(
+      profile =>
+        normalizeDisplayName(profile.displayName ?? '').toLowerCase() === normalized,
+    ) ?? null
+  )
+}
+
 export async function isDisplayNameTaken(
   displayName: string,
   excludeUserId?: string,

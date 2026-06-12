@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, boolean, integer, uniqueIndex } from 'drizzle-orm/pg-core'
 
 // --- Better Auth tables ---
 export const user = pgTable('user', {
@@ -65,6 +65,47 @@ export const userProfiles = pgTable('user_profiles', {
   displayName: text('displayName'),
   avatarUrl: text('avatarUrl'),
   recoveryPinHash: text('recoveryPinHash'),
+  burnedAt: timestamp('burnedAt'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })
+
+export const accountBurnVotes = pgTable(
+  'account_burn_votes',
+  {
+    id: text('id').primaryKey(),
+    targetUserId: text('targetUserId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    voterId: text('voterId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex('account_burn_votes_target_voter_unique').on(
+      table.targetUserId,
+      table.voterId,
+    ),
+  ],
+)
+
+export const predictionVotes = pgTable(
+  'prediction_votes',
+  {
+    id: text('id').primaryKey(),
+    predictionId: text('predictionId')
+      .notNull()
+      .references(() => predictions.id, { onDelete: 'cascade' }),
+    voterId: text('voterId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex('prediction_votes_prediction_voter_unique').on(
+      table.predictionId,
+      table.voterId,
+    ),
+  ],
+)

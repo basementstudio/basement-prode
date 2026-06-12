@@ -11,6 +11,7 @@ import {
 import type { MatchDataSource } from '@/lib/wc2026/get-matches'
 import { formatTimezoneLabel, getUserTimezone } from '@/lib/wc2026/format-local'
 import { savePrediction } from '@/lib/actions'
+import type { RevealedMatchPrediction } from '@/lib/match-predictions'
 import { GROUP_ADVANCE_MS, focusMatchInput } from '@/lib/prediction-flow'
 import { cn } from '@/lib/utils'
 import { MatchCard } from '@/components/match-card'
@@ -24,6 +25,7 @@ interface Props {
   initialPredictions: PredMap
   matches: Match[]
   dataSource: MatchDataSource
+  communityPicksByMatch: Record<string, RevealedMatchPrediction[]>
 }
 
 function findNextEditableMatch(list: Match[], afterId: string, now: Date): Match | undefined {
@@ -53,7 +55,12 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
-export function PronosticosClient({ initialPredictions, matches, dataSource }: Props) {
+export function PronosticosClient({
+  initialPredictions,
+  matches,
+  dataSource,
+  communityPicksByMatch,
+}: Props) {
   const router = useRouter()
   const [predictions, setPredictions] = useState<PredMap>(initialPredictions)
   const [viewMode, setViewMode] = useState<ViewMode>('todos')
@@ -312,6 +319,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
                     setFocusToken(t => t + 1)
                   }}
                   onSaved={() => handleTodosMatchComplete(match.id)}
+                  communityPicks={communityPicksByMatch[match.id] ?? []}
                 />
               )
             })}
@@ -336,6 +344,7 @@ export function PronosticosClient({ initialPredictions, matches, dataSource }: P
             onGroupMatchComplete={handleGroupMatchComplete}
             onGroupMatchActivate={handleGroupMatchActivate}
             onApiReady={handleCarouselApiReady}
+            communityPicksByMatch={communityPicksByMatch}
           />
         )
       )}

@@ -19,6 +19,8 @@ import { isValidScore } from '@/lib/score'
 import { useIsMobile } from '@/lib/use-mobile'
 import { ScoreInput } from '@/components/score-input'
 import { TeamFlag } from '@/components/team-flag'
+import { MatchCommunityPicks } from '@/components/match-community-picks'
+import type { RevealedMatchPrediction } from '@/lib/match-predictions'
 
 function MatchStatusBadge({
   status,
@@ -131,6 +133,7 @@ export interface MatchCardProps {
   onSaved?: () => void
   /** Guarda y notifica solo cuando el usuario editó local y visitante. */
   saveWhenComplete?: boolean
+  communityPicks?: RevealedMatchPrediction[]
 }
 
 export function MatchCard({
@@ -145,6 +148,7 @@ export function MatchCard({
   onActivate,
   onSaved,
   saveWhenComplete = false,
+  communityPicks = [],
 }: MatchCardProps) {
   const isMobile = useIsMobile()
   const status = getMatchStatus(match, now)
@@ -153,6 +157,7 @@ export function MatchCard({
   const [homeScore, setHomeScore] = useState(prediction?.home ?? 0)
   const [awayScore, setAwayScore] = useState(prediction?.away ?? 0)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(!!prediction)
   const [editEpoch, setEditEpoch] = useState(0)
   const homeRef = useRef<HTMLInputElement>(null)
@@ -169,11 +174,13 @@ export function MatchCard({
 
   const markHomeEdited = useCallback(() => {
     homeEditedRef.current = true
+    setSaveError('')
     setEditEpoch(n => n + 1)
   }, [])
 
   const markAwayEdited = useCallback(() => {
     awayEditedRef.current = true
+    setSaveError('')
     setEditEpoch(n => n + 1)
   }, [])
 
@@ -232,15 +239,21 @@ export function MatchCard({
   const dayLabel = formatKickoffDay(match.kickoffUtc, userTz)
   const timeLabel = formatKickoffTime(match.kickoffUtc, userTz)
 
-  async function handleSave(h: number, a: number) {
-    if (locked || !isValidScore(h) || !isValidScore(a)) return
+  async function handleSave(h: number, a: number): Promise<boolean> {
+    if (locked || !isValidScore(h) || !isValidScore(a)) return false
     setSaving(true)
+    setSaveError('')
     try {
       await onSave(match.id, h, a)
       setSaved(true)
+      queueMicrotask(() => savedCallbackRef.current?.())
+      return true
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not save pick'
+      setSaveError(message)
+      return false
     } finally {
       setSaving(false)
-      queueMicrotask(() => savedCallbackRef.current?.())
     }
   }
 
@@ -298,18 +311,18 @@ export function MatchCard({
     void commitSave()
   }
 
+  function scoresMatchSavedPrediction(): boolean {
+    if (!prediction) return false
+    return homeScore === prediction.home && awayScore === prediction.away
+  }
+
   async function commitSave() {
     if (locked || saving || committingRef.current || getCommitPhase() !== 'ready') return
 
     committingRef.current = true
     try {
-      const unchanged =
-        homeScore === (prediction?.home ?? 0) && awayScore === (prediction?.away ?? 0)
-
-      if (unchanged) {
-        if (prediction) {
-          queueMicrotask(() => savedCallbackRef.current?.())
-        }
+      if (scoresMatchSavedPrediction()) {
+        queueMicrotask(() => savedCallbackRef.current?.())
         return
       }
 
@@ -317,6 +330,19 @@ export function MatchCard({
     } finally {
       committingRef.current = false
     }
+  }
+
+  function SaveErrorMessage() {
+    if (!saveError) return null
+    return (
+      <p
+        className="mono-label"
+        role="alert"
+        style={{ color: 'var(--color-contrast)', marginTop: '8px', textAlign: 'center' }}
+      >
+        {saveError}
+      </p>
+    )
   }
 
   useEffect(() => () => {
@@ -356,7 +382,14 @@ export function MatchCard({
 
     if (!focused) return
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-    if (homeScore !== (prediction?.home ?? 0) || awayScore !== (prediction?.away ?? 0)) {
+
+    const predHome = prediction?.home ?? 0
+    const predAway = prediction?.away ?? 0
+    const scoresChanged = homeScore !== predHome || awayScore !== predAway
+    const isNewCommit =
+      !prediction && homeEditedRef.current && awayEditedRef.current
+
+    if (scoresChanged || isNewCommit) {
       autoSaveRef.current = setTimeout(() => {
         void handleSave(homeScore, awayScore)
       }, INPUT_PAUSE_MS)
@@ -465,6 +498,8 @@ export function MatchCard({
               />
             </div>
           )}
+
+          {!locked && <SaveErrorMessage />}
         </div>
       ) : (
         <div className="match-card-body-desktop">
@@ -514,6 +549,7 @@ export function MatchCard({
                 onTabNext={handleAwayComplete}
                 onBlurComplete={handleAwayComplete}
               />
+              <SaveErrorMessage />
               </div>
             )}
           </div>
@@ -527,6 +563,12 @@ export function MatchCard({
           </div>
         </div>
       )}
+
+      <MatchCommunityPicks
+        picks={communityPicks}
+        locked={locked}
+        revealed={locked && communityPicks.length > 0}
+      />
     </div>
   )
 }
