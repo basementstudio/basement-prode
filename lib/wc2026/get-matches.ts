@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import type { Match } from '@/lib/wc2026/types'
+import { WC2026_MATCH_CACHE_SECONDS, WC2026_MATCH_CACHE_TAG } from '@/lib/wc2026/cache'
 import { fetchGroupStageFromApi } from '@/lib/wc2026/api-football'
 import { mergeKnownResults } from '@/lib/wc2026/known-results'
 import { STATIC_GROUP_MATCHES } from '@/lib/wc2026/static-matches'
@@ -16,7 +17,6 @@ export interface GroupStageData {
   source: MatchDataSource
 }
 
-const CACHE_REVALIDATE_SECONDS = 60
 const MIN_GROUP_MATCHES = 60
 
 async function loadGroupStageMatches(): Promise<GroupStageData> {
@@ -56,8 +56,8 @@ async function loadGroupStageMatches(): Promise<GroupStageData> {
 
 export const getGroupStageData = unstable_cache(
   loadGroupStageMatches,
-  ['wc2026-group-stage-v4'],
-  { revalidate: CACHE_REVALIDATE_SECONDS, tags: ['wc2026-matches'] },
+  ['wc2026-group-stage-v5', String(WC2026_MATCH_CACHE_SECONDS)],
+  { revalidate: WC2026_MATCH_CACHE_SECONDS, tags: [WC2026_MATCH_CACHE_TAG] },
 )
 
 export async function getGroupStageMatches(): Promise<Match[]> {

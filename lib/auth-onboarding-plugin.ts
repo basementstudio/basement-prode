@@ -1,6 +1,7 @@
 import { createAuthEndpoint } from '@better-auth/core/api'
 import { APIError, getSessionFromCtx, sessionMiddleware } from 'better-auth/api'
 import * as z from 'zod'
+import { revalidateAfterAuthChange } from '@/lib/revalidate-app'
 import { runCompleteOnboarding } from '@/lib/user-profile'
 import { RECOVERY_PIN_MAX, RECOVERY_PIN_MIN } from '@/lib/recovery-pin'
 
@@ -45,6 +46,8 @@ export function onboardingPlugin() {
             }
             throw APIError.from('INTERNAL_SERVER_ERROR', { message: 'ONBOARDING_FAILED' })
           }
+
+          revalidateAfterAuthChange()
 
           return ctx.json({ complete: true })
         },

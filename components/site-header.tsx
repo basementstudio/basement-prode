@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
+import { ensureSignedOut, syncAuthSessionAndRefresh } from '@/lib/auth-refresh-client'
 import { signOut, useSession } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 
@@ -108,8 +109,11 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
 
   async function handleSignOut() {
     await signOut()
+    if (!(await ensureSignedOut())) {
+      await signOut()
+    }
+    await syncAuthSessionAndRefresh(router)
     router.push('/login?recover=1')
-    router.refresh()
   }
 
   const userName = displayName || session?.user?.name || 'Player'

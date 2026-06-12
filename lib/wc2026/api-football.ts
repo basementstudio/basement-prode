@@ -1,4 +1,5 @@
 import type { Match } from '@/lib/wc2026/types'
+import { WC2026_MATCH_CACHE_SECONDS, WC2026_MATCH_CACHE_TAG } from '@/lib/wc2026/cache'
 import { normalizeTeamCode, resolveGroup, resolveTeam } from '@/lib/wc2026/teams'
 
 const API_BASE = 'https://v3.football.api-sports.io'
@@ -117,7 +118,10 @@ export async function fetchGroupStageFromApi(apiKey: string): Promise<Match[]> {
     headers: {
       'x-apisports-key': apiKey,
     },
-    next: { revalidate: 0 },
+    next: {
+      revalidate: WC2026_MATCH_CACHE_SECONDS,
+      tags: [WC2026_MATCH_CACHE_TAG],
+    },
   })
 
   if (!res.ok) {

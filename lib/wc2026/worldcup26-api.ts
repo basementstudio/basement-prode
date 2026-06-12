@@ -1,4 +1,5 @@
 import type { Match } from '@/lib/wc2026/types'
+import { WC2026_MATCH_CACHE_SECONDS, WC2026_MATCH_CACHE_TAG } from '@/lib/wc2026/cache'
 import { normalizeTeamCode } from '@/lib/wc2026/teams'
 
 const DEFAULT_BASE = 'https://worldcup26.ir'
@@ -73,7 +74,10 @@ export async function fetchWorldCup26Games(
   const url = `${baseUrl.replace(/\/$/, '')}/get/games`
 
   const res = await fetch(url, {
-    next: { revalidate: 0 },
+    next: {
+      revalidate: WC2026_MATCH_CACHE_SECONDS,
+      tags: [WC2026_MATCH_CACHE_TAG],
+    },
     headers: { Accept: 'application/json' },
   })
 

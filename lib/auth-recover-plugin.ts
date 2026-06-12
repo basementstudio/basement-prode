@@ -3,6 +3,7 @@ import { APIError, getSessionFromCtx } from 'better-auth/api'
 import { deleteSessionCookie, setSessionCookie } from 'better-auth/cookies'
 import { parseUserOutput } from 'better-auth/db'
 import * as z from 'zod'
+import { revalidateAfterAuthChange } from '@/lib/revalidate-app'
 import { findProfileByDisplayName, isProfileComplete, normalizeDisplayName } from '@/lib/profile'
 import { isValidRecoveryPin, RECOVERY_PIN_MAX, RECOVERY_PIN_MIN } from '@/lib/recovery-pin'
 import { verifyRecoveryPin } from '@/lib/recovery-pin-server'
@@ -59,6 +60,8 @@ export function usernameRecoverPlugin() {
           }
 
           await setSessionCookie(ctx, { session, user: targetUser })
+
+          revalidateAfterAuthChange()
 
           return ctx.json({
             recovered: true,

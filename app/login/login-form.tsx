@@ -4,6 +4,10 @@ import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserAvatar } from '@/components/user-avatar'
 import { NameTakenDialog } from '@/components/name-taken-dialog'
+import {
+  ensureAuthenticatedSession,
+  syncAuthSessionAndRefresh,
+} from '@/lib/auth-refresh-client'
 import { authClient } from '@/lib/auth-client'
 import { compressImageFile } from '@/lib/avatar-utils'
 import {
@@ -44,8 +48,12 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
         setError(result.error.message || 'Could not sign in. Try again.')
         return
       }
+      if (!(await ensureAuthenticatedSession())) {
+        setError('Session could not be created. Try again.')
+        return
+      }
+      await syncAuthSessionAndRefresh(router)
       setStep('onboarding')
-      router.refresh()
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Could not sign in. Try again.'
       setError(message)
@@ -85,8 +93,12 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
         return
       }
 
+      if (!(await ensureAuthenticatedSession())) {
+        setError('Could not restore session. Try again.')
+        return
+      }
+      await syncAuthSessionAndRefresh(router)
       router.push('/pronosticos')
-      router.refresh()
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Could not recover account.'
       setError(
@@ -163,8 +175,12 @@ export function LoginForm({ initialStep = 'enter' }: LoginFormProps) {
           return
         }
 
+        if (!(await ensureAuthenticatedSession())) {
+          setError('Profile saved but session is missing. Try recovering with your name + PIN.')
+          return
+        }
+        await syncAuthSessionAndRefresh(router)
         router.push('/pronosticos')
-        router.refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not save profile. Try again.')
       }
