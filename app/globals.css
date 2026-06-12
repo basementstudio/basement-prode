@@ -1583,13 +1583,13 @@
 @utility prize-viewer {
   position: relative;
   flex: 1;
-  min-height: 200px;
+  min-height: 260px;
   border: 1px solid var(--fg-4);
   background: #000;
   overflow: hidden;
 
   @media (min-width: 768px) {
-    min-height: 240px;
+    min-height: 300px;
   }
 }
 
@@ -1597,6 +1597,11 @@
   width: 100% !important;
   height: 100% !important;
   display: block;
+}
+
+@utility prize-viewer-image {
+  object-fit: contain;
+  padding: 1.25rem;
 }
 
 @utility prize-viewer-fallback {

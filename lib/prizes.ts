@@ -31,7 +31,7 @@ export const PRIZE_ITEMS: PrizeItem[] = [
     id: 'tee',
     label: '3rd',
     title: 'Basement tee',
-    image: '/prizes/tee.png',
+    image: '/prizes/tee-front.png',
     accent: '#CD7F32',
   },
 ]

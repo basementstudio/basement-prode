@@ -40,7 +40,7 @@ function PrizeCard({ rank }: { rank: number }) {
           ? 'Heavyweight fleece'
           : prize.id === 'cap'
             ? 'Holographic brim sticker'
-            : 'Premium cotton'}
+            : 'Drag to rotate · scroll to zoom'}
       </p>
     </article>
   )
@@ -51,7 +51,7 @@ export function PrizeShowcase() {
     <section className="prize-showcase" aria-label="Pool prizes">
       <div className="mono-label prize-showcase-eyebrow">— PRIZES</div>
       <p className="prize-showcase-copy">
-        Top three in the pool take home Basement merch. Rendered in 3D — drag on desktop, swipe on mobile.
+        Top three in the pool take home Basement merch. 
       </p>
 
       <div className="prize-showcase-desktop">

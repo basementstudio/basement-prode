@@ -1,122 +1,81 @@
 'use client'
 
-import { Float, PresentationControls, useTexture } from '@react-three/drei'
-import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
-import * as THREE from 'three'
+import { Center, ContactShadows, Environment, OrbitControls } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
+import { useEffect } from 'react'
 import type { PrizeItem } from '@/lib/prizes'
-import './prize-shader-material'
+import { Shirt } from './shirt'
 
 interface PrizeSceneProps {
   prize: PrizeItem
-  interactive: boolean
   animate: boolean
-  aspect: number
 }
 
-function PrizeMesh({
-  prize,
-  animate,
-  aspect,
-}: {
-  prize: PrizeItem
-  animate: boolean
-  aspect: number
-}) {
-  const materialRef = useRef<THREE.ShaderMaterial>(null)
-  const texture = useTexture(prize.image)
-
-  useEffect(() => {
-    texture.colorSpace = THREE.SRGBColorSpace
-    texture.anisotropy = 8
-  }, [texture])
-
-  useFrame((state, delta) => {
-    if (!materialRef.current) return
-    if (animate) {
-      materialRef.current.uniforms.uTime.value += delta
-    }
-    state.invalidate()
-  })
-
-  const height = 2.4
-  const width = height * aspect
-
-  return (
-    <mesh>
-      <planeGeometry args={[width, height, 32, 32]} />
-      <prizeShaderMaterial
-        ref={materialRef}
-        uTexture={texture}
-        uAccent={new THREE.Color(prize.accent)}
-        uRimIntensity={0.45}
-        uBend={prize.id === 'cap' ? 0.18 : 0.1}
-        transparent
-        depthWrite={false}
-      />
-    </mesh>
-  )
-}
-
-function SceneLights() {
+function SceneLights({ accent }: { accent: string }) {
   return (
     <>
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[4, 6, 5]} intensity={1.1} color="#ffffff" />
-      <directionalLight position={[-5, 2, -3]} intensity={0.35} color="#8888ff" />
-      <pointLight position={[0, -1, 2]} intensity={0.25} color={new THREE.Color('#ff4d00')} />
+      <ambientLight intensity={0.18} />
+      <directionalLight position={[0, 1.5, 4]} intensity={1.35} color="#f5f5f5" />
+      <directionalLight position={[-3.5, 2, 2]} intensity={0.45} color="#c8d4ff" />
+      <directionalLight position={[3, 1, 1.5]} intensity={0.3} color="#ffe8d6" />
+      <directionalLight position={[0, 2.5, -3]} intensity={0.55} color="#ffffff" />
+      <spotLight
+        position={[0, 2.5, 3]}
+        angle={0.45}
+        penumbra={0.85}
+        intensity={0.5}
+        color={accent}
+        distance={10}
+      />
     </>
   )
 }
 
-export function PrizeScene({ prize, interactive, animate, aspect }: PrizeSceneProps) {
-  const { invalidate } = useThree()
+export function PrizeScene({ prize, animate }: PrizeSceneProps) {
+  const { invalidate, camera } = useThree()
 
   useEffect(() => {
+    camera.position.set(0, 0.05, 2.35)
+    camera.lookAt(0, 0, 0)
+    camera.updateProjectionMatrix()
     invalidate()
-  }, [invalidate, prize.id])
-
-  const content = (
-    <group>
-      <SceneLights />
-      <PrizeMesh prize={prize} animate={animate} aspect={aspect} />
-    </group>
-  )
-
-  if (!interactive) {
-    return (
-      <Float
-        speed={animate ? 1.2 : 0}
-        rotationIntensity={animate ? 0.15 : 0}
-        floatIntensity={animate ? 0.35 : 0}
-        floatingRange={animate ? [-0.06, 0.06] : [0, 0]}
-        autoInvalidate
-      >
-        {content}
-      </Float>
-    )
-  }
+  }, [camera, invalidate])
 
   return (
-    <PresentationControls
-      global={false}
-      cursor
-      snap
-      speed={1.5}
-      zoom={0.9}
-      polar={[Math.PI / 4, Math.PI / 1.8]}
-      azimuth={[-Math.PI / 5, Math.PI / 5]}
-      config={{ mass: 1, tension: 180, friction: 22 }}
-    >
-      <Float
-        speed={animate ? 1.2 : 0}
-        rotationIntensity={animate ? 0.12 : 0}
-        floatIntensity={animate ? 0.3 : 0}
-        floatingRange={animate ? [-0.05, 0.05] : [0, 0]}
-        autoInvalidate
-      >
-        {content}
-      </Float>
-    </PresentationControls>
+    <>
+      <SceneLights accent={prize.accent} />
+      <Environment preset="studio" environmentIntensity={0.4} />
+
+      <Center disableY>
+        <Shirt />
+      </Center>
+
+      <ContactShadows
+        position={[0, -0.52, 0]}
+        opacity={0.45}
+        scale={2.4}
+        blur={2.5}
+        far={1.4}
+        color="#000000"
+      />
+
+      <OrbitControls
+        makeDefault
+        target={[0, 0, 0]}
+        enablePan={false}
+        enableZoom
+        enableRotate
+        minDistance={1.4}
+        maxDistance={4.5}
+        minPolarAngle={Math.PI / 6}
+        maxPolarAngle={Math.PI / 1.35}
+        autoRotate={animate}
+        autoRotateSpeed={1.2}
+        zoomSpeed={0.8}
+        rotateSpeed={0.85}
+        dampingFactor={0.08}
+        enableDamping
+      />
+    </>
   )
 }

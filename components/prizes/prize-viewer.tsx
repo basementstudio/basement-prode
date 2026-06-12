@@ -1,7 +1,8 @@
 'use client'
 
-import { Environment, PerformanceMonitor } from '@react-three/drei'
+import { PerformanceMonitor } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
+import Image from 'next/image'
 import { Suspense, useEffect, useState } from 'react'
 import type { PrizeItem } from '@/lib/prizes'
 import { useIsMobile } from '@/lib/use-mobile'
@@ -24,11 +25,9 @@ export function PrizeViewer({ prize, className }: PrizeViewerProps) {
   const isMobile = useIsMobile()
   const [dpr, setDpr] = useState(1.5)
   const [animate, setAnimate] = useState(true)
-  const [interactive, setInteractive] = useState(false)
 
   useEffect(() => {
     setDpr(isMobile ? 1.25 : 1.75)
-    setInteractive(!isMobile)
   }, [isMobile])
 
   useEffect(() => {
@@ -39,20 +38,34 @@ export function PrizeViewer({ prize, className }: PrizeViewerProps) {
     return () => media.removeEventListener('change', update)
   }, [])
 
+  if (prize.id !== 'tee') {
+    return (
+      <div className={className ?? 'prize-viewer'}>
+        <Image
+          src={prize.image}
+          alt={prize.title}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="prize-viewer-image"
+        />
+      </div>
+    )
+  }
+
   return (
     <div className={className ?? 'prize-viewer'}>
       <Suspense fallback={<PrizeFallback />}>
         <Canvas
           className="prize-viewer-canvas"
-          camera={{ position: [0, 0, 4.2], fov: 32, near: 0.1, far: 20 }}
+          camera={{ position: [0, 0.05, 2.35], fov: 38, near: 0.1, far: 20 }}
           dpr={[1, dpr]}
-          frameloop="demand"
+          frameloop="always"
           gl={{
             alpha: true,
             antialias: !isMobile,
             powerPreference: 'high-performance',
           }}
-          style={{ touchAction: interactive ? 'none' : 'pan-y' }}
+          style={{ touchAction: 'none' }}
         >
           <PerformanceMonitor
             bounds={() => [30, 58]}
@@ -62,13 +75,7 @@ export function PrizeViewer({ prize, className }: PrizeViewerProps) {
             onFallback={() => setDpr(1)}
           />
           <color attach="background" args={['#000000']} />
-          <Environment preset="city" environmentIntensity={0.35} />
-          <PrizeScene
-            prize={prize}
-            interactive={interactive}
-            animate={animate}
-            aspect={prize.id === 'cap' ? 0.95 : prize.id === 'hoodie' ? 0.78 : 0.82}
-          />
+          <PrizeScene prize={prize} animate={animate} />
         </Canvas>
       </Suspense>
     </div>
