@@ -35,13 +35,7 @@ function PrizeCard({ rank }: { rank: number }) {
         {prize.label} — {prize.title.toUpperCase()}
       </div>
       <PrizeViewer prize={prize} />
-      <p className="prize-card-hint mono-label">
-        {prize.id === 'hoodie'
-          ? 'Heavyweight fleece'
-          : prize.id === 'cap'
-            ? 'Holographic brim sticker'
-            : 'Drag to rotate · scroll to zoom'}
-      </p>
+      <p className="prize-card-hint mono-label">Drag to rotate · scroll to zoom</p>
     </article>
   )
 }

@@ -3,8 +3,9 @@
 import { Center, ContactShadows, Environment, OrbitControls } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
+import { PRIZE_MODELS } from '@/lib/prize-models'
 import type { PrizeItem } from '@/lib/prizes'
-import { Shirt } from './shirt'
+import { BrandedModel } from './branded-model'
 
 interface PrizeSceneProps {
   prize: PrizeItem
@@ -33,13 +34,14 @@ function SceneLights({ accent }: { accent: string }) {
 
 export function PrizeScene({ prize, animate }: PrizeSceneProps) {
   const { invalidate, camera } = useThree()
+  const model = PRIZE_MODELS[prize.id]
 
   useEffect(() => {
-    camera.position.set(0, 0.05, 2.35)
+    camera.position.set(0, 0.05, model.cameraZ)
     camera.lookAt(0, 0, 0)
     camera.updateProjectionMatrix()
     invalidate()
-  }, [camera, invalidate])
+  }, [camera, invalidate, model.cameraZ])
 
   return (
     <>
@@ -47,13 +49,13 @@ export function PrizeScene({ prize, animate }: PrizeSceneProps) {
       <Environment preset="studio" environmentIntensity={0.4} />
 
       <Center disableY>
-        <Shirt />
+        <BrandedModel config={model} />
       </Center>
 
       <ContactShadows
-        position={[0, -0.52, 0]}
+        position={[0, model.shadowY, 0]}
         opacity={0.45}
-        scale={2.4}
+        scale={model.shadowScale}
         blur={2.5}
         far={1.4}
         color="#000000"
