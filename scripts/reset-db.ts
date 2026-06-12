@@ -1,7 +1,11 @@
 /**
  * Drops all tables and recreates schema from scratch. Run: bun run db:reset
  */
-import { pool } from '../lib/db'
+import { Pool } from 'pg'
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+})
 
 async function resetDb() {
   if (!process.env.DATABASE_URL) {

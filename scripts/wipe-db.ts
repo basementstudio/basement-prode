@@ -2,7 +2,11 @@
  * Wipes all app + auth data. Run: bun run db:wipe
  * Keeps table structure; removes users, sessions, profiles, and predictions.
  */
-import { pool } from '../lib/db'
+import { Pool } from 'pg'
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+})
 
 async function wipeDb() {
   if (!process.env.DATABASE_URL) {
