@@ -59,8 +59,13 @@ export function BrandedModel({ config }: BrandedModelProps) {
       logo.repeat.x = -1
       logo.offset.x = 1
     }
+    if (config.logoFlipV) {
+      logo.wrapT = RepeatWrapping
+      logo.repeat.y = -1
+      logo.offset.y = 1
+    }
     logo.needsUpdate = true
-  }, [logo, gl, config.logoFlipU])
+  }, [logo, gl, config.logoFlipU, config.logoFlipV])
 
   useLayoutEffect(() => {
     const parent = meshRef.current

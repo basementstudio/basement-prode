@@ -11,6 +11,8 @@ export interface PrizeModelConfig {
   logoRotation?: number
   /** Mirror logo horizontally — fixes reversed text on some meshes */
   logoFlipU?: boolean
+  /** Flip texture vertically — SVG Y axis is inverted in WebGL */
+  logoFlipV?: boolean
   cameraZ: number
   shadowY: number
   shadowScale: number
@@ -23,6 +25,7 @@ export const PRIZE_MODELS: Record<PrizeId, PrizeModelConfig> = {
     logoAspect: 1,
     logoPosition: [0.13, 0.17, 0.14],
     logoWidth: 0.16,
+    logoFlipV: true,
     cameraZ: 2.35,
     shadowY: -0.52,
     shadowScale: 2.4,
@@ -33,6 +36,7 @@ export const PRIZE_MODELS: Record<PrizeId, PrizeModelConfig> = {
     logoAspect: 1,
     logoPosition: [0, 0.07, 0.15],
     logoWidth: 0.085,
+    logoFlipV: true,
     cameraZ: 1.55,
     shadowY: -0.38,
     shadowScale: 1.4,
