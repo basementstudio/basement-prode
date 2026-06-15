@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import {
   getMatchDisplayScore,
   getMatchStatus,
@@ -14,12 +14,12 @@ import {
   formatKickoffTime,
 } from '@/lib/wc2026/format-local'
 import { calcPoints, scoreLabel } from '@/lib/scoring'
-import { INPUT_PAUSE_MS } from '@/lib/prediction-flow'
 import { isValidScore } from '@/lib/score'
 import { useIsMobile } from '@/lib/use-mobile'
 import { ScoreInput } from '@/components/score-input'
 import { TeamFlag } from '@/components/team-flag'
 import { MatchCommunityPicks } from '@/components/match-community-picks'
+import { PredictionSaveSwitch } from '@/components/prediction-save-switch'
 import type { RevealedMatchPrediction } from '@/lib/match-predictions'
 
 function MatchStatusBadge({
@@ -49,6 +49,12 @@ function MatchStatusBadge({
   return <span className="mono-label badge badge-upcoming">UPCOMING</span>
 }
 
+function formatLiveLabel(elapsed?: number | null, statusShort?: string): string {
+  if (elapsed != null) return `Live · ${elapsed}'`
+  if (statusShort === 'HT') return 'Half-time'
+  return 'Live'
+}
+
 function LockedScores({
   status,
   concluded,
@@ -57,6 +63,7 @@ function LockedScores({
   prediction,
   points,
   elapsed,
+  statusShort,
   compact = false,
 }: {
   status: MatchStatus
@@ -66,8 +73,11 @@ function LockedScores({
   prediction?: { home: number; away: number }
   points: number | null
   elapsed?: number | null
+  statusShort?: string
   compact?: boolean
 }) {
+  const liveLabel = formatLiveLabel(elapsed, statusShort)
+
   return (
     <div
       style={{
@@ -78,14 +88,21 @@ function LockedScores({
       }}
     >
       {!compact && displayScore ? (
-        <div className="match-card-score-row">
-          <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>{displayScore.home}</span>
-          <span className="match-card-score-sep">:</span>
-          <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>{displayScore.away}</span>
-        </div>
+        <>
+          <div className="match-card-score-row">
+            <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>{displayScore.home}</span>
+            <span className="match-card-score-sep">:</span>
+            <span style={{ fontSize: '40px', fontWeight: 700, color: 'var(--fg-1)' }}>{displayScore.away}</span>
+          </div>
+          {status === 'live' ? (
+            <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>{liveLabel}</span>
+          ) : (
+            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Final</span>
+          )}
+        </>
       ) : !compact && status === 'live' ? (
         <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
-          Match in progress{elapsed != null ? ` · ${elapsed}'` : ''}
+          {liveLabel}
         </span>
       ) : !compact && concluded ? (
         <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Result pending</span>
@@ -95,8 +112,12 @@ function LockedScores({
 
       {compact && status === 'live' && (
         <span className="mono-label" style={{ color: 'var(--color-contrast)' }}>
-          Match in progress{elapsed != null ? ` · ${elapsed}'` : ''}
+          {displayScore ? liveLabel : 'Match in progress'}
         </span>
+      )}
+
+      {compact && status === 'finished' && displayScore && (
+        <span className="mono-label" style={{ color: 'var(--fg-3)' }}>Final</span>
       )}
 
       {hasPred && (
@@ -131,8 +152,6 @@ export interface MatchCardProps {
   focusToken?: number
   onActivate?: () => void
   onSaved?: () => void
-  /** Guarda y notifica solo cuando el usuario editó local y visitante. */
-  saveWhenComplete?: boolean
   communityPicks?: RevealedMatchPrediction[]
 }
 
@@ -147,7 +166,6 @@ export function MatchCard({
   focusToken = 0,
   onActivate,
   onSaved,
-  saveWhenComplete = false,
   communityPicks = [],
 }: MatchCardProps) {
   const isMobile = useIsMobile()
@@ -159,64 +177,16 @@ export function MatchCard({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(!!prediction)
-  const [editEpoch, setEditEpoch] = useState(0)
   const homeRef = useRef<HTMLInputElement>(null)
   const awayRef = useRef<HTMLInputElement>(null)
   const savedCallbackRef = useRef(onSaved)
-  const homeEditedRef = useRef(false)
-  const awayEditedRef = useRef(false)
-  const awayConfirmedRef = useRef(false)
-  const committingRef = useRef(false)
-  const prevFocusedRef = useRef(focused)
-  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const focusAwayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   savedCallbackRef.current = onSaved
-
-  const markHomeEdited = useCallback(() => {
-    homeEditedRef.current = true
-    setSaveError('')
-    setEditEpoch(n => n + 1)
-  }, [])
-
-  const markAwayEdited = useCallback(() => {
-    awayEditedRef.current = true
-    setSaveError('')
-    setEditEpoch(n => n + 1)
-  }, [])
-
-  const markAwayConfirmed = useCallback(() => {
-    awayConfirmedRef.current = true
-    setEditEpoch(n => n + 1)
-  }, [])
 
   useEffect(() => {
     setHomeScore(prediction?.home ?? 0)
     setAwayScore(prediction?.away ?? 0)
     setSaved(!!prediction)
-    if (!focused) {
-      homeEditedRef.current = false
-      awayEditedRef.current = false
-      awayConfirmedRef.current = false
-    }
-  }, [prediction?.home, prediction?.away, prediction, match.id, focused])
-
-  useEffect(() => {
-    const wasFocused = prevFocusedRef.current
-    prevFocusedRef.current = focused
-
-    if (focused && !locked && !wasFocused) {
-      homeEditedRef.current = false
-      awayEditedRef.current = false
-      awayConfirmedRef.current = false
-    }
-
-    if (wasFocused && !focused && !locked) {
-      const active = document.activeElement
-      if (active === homeRef.current || active === awayRef.current) {
-        ;(active as HTMLElement).blur()
-      }
-    }
-  }, [focused, locked])
+  }, [prediction?.home, prediction?.away, prediction, match.id])
 
   useLayoutEffect(() => {
     if (!focused || locked) return
@@ -235,6 +205,9 @@ export function MatchCard({
     ? calcPoints({ home: prediction!.home, away: prediction!.away }, match.result)
     : null
 
+  const dirty = !prediction || homeScore !== prediction.home || awayScore !== prediction.away
+  const canSave = !locked && isValidScore(homeScore) && isValidScore(awayScore) && dirty
+
   const dateLabel = formatKickoffDate(match.kickoffUtc, userTz)
   const dayLabel = formatKickoffDay(match.kickoffUtc, userTz)
   const timeLabel = formatKickoffTime(match.kickoffUtc, userTz)
@@ -246,6 +219,8 @@ export function MatchCard({
     try {
       await onSave(match.id, h, a)
       setSaved(true)
+      homeRef.current?.blur()
+      awayRef.current?.blur()
       queueMicrotask(() => savedCallbackRef.current?.())
       return true
     } catch (err) {
@@ -257,79 +232,9 @@ export function MatchCard({
     }
   }
 
-  type CommitPhase = 'idle' | 'need-away' | 'ready'
-
-  function getCommitPhase(): CommitPhase {
-    if (!homeEditedRef.current && !awayEditedRef.current) return 'idle'
-
-    const predHome = prediction?.home ?? 0
-    const predAway = prediction?.away ?? 0
-    const homeChanged = homeScore !== predHome
-    const awayChanged = awayScore !== predAway
-
-    if (!prediction) {
-      if (homeEditedRef.current && awayEditedRef.current) return 'ready'
-      if (homeEditedRef.current) return 'need-away'
-      return 'idle'
-    }
-
-    if (!homeChanged && !awayChanged) {
-      return homeEditedRef.current && awayEditedRef.current ? 'ready' : 'idle'
-    }
-
-    if (!homeChanged && awayChanged) {
-      return awayEditedRef.current ? 'ready' : 'idle'
-    }
-
-    if (homeChanged && !awayChanged) {
-      if (!homeEditedRef.current) return 'idle'
-      return awayConfirmedRef.current || awayEditedRef.current ? 'ready' : 'need-away'
-    }
-
-    if (homeEditedRef.current && awayEditedRef.current) return 'ready'
-    if (homeEditedRef.current && !awayEditedRef.current) return 'need-away'
-    if (!homeEditedRef.current && awayEditedRef.current) return 'ready'
-    return 'idle'
-  }
-
-  function confirmAwayIfUnchanged() {
-    if (!prediction) return
-    const awayChanged = awayScore !== prediction.away
-    if (!awayChanged && homeEditedRef.current && !awayEditedRef.current) {
-      markAwayConfirmed()
-    }
-  }
-
-  function handleAwayComplete() {
-    if (saveWhenComplete) {
-      confirmAwayIfUnchanged()
-      if (getCommitPhase() === 'ready') {
-        void commitSave()
-      }
-      return
-    }
-    void commitSave()
-  }
-
-  function scoresMatchSavedPrediction(): boolean {
-    if (!prediction) return false
-    return homeScore === prediction.home && awayScore === prediction.away
-  }
-
-  async function commitSave() {
-    if (locked || saving || committingRef.current || getCommitPhase() !== 'ready') return
-
-    committingRef.current = true
-    try {
-      if (scoresMatchSavedPrediction()) {
-        queueMicrotask(() => savedCallbackRef.current?.())
-        return
-      }
-
-      await handleSave(homeScore, awayScore)
-    } finally {
-      committingRef.current = false
-    }
+  function handleSaveSwitch() {
+    if (!canSave || saving) return
+    void handleSave(homeScore, awayScore)
   }
 
   function SaveErrorMessage() {
@@ -345,59 +250,20 @@ export function MatchCard({
     )
   }
 
-  useEffect(() => () => {
-    if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
-    if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-  }, [])
-
-  useEffect(() => {
-    if (locked || saving || !saveWhenComplete || !focused) return
-    if (getCommitPhase() !== 'need-away') return
-
-    if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
-    focusAwayTimerRef.current = setTimeout(() => {
-      awayRef.current?.focus({ preventScroll: true })
-      awayRef.current?.select()
-    }, INPUT_PAUSE_MS)
-
-    return () => {
-      if (focusAwayTimerRef.current) clearTimeout(focusAwayTimerRef.current)
-    }
-  }, [homeScore, awayScore, locked, saving, saveWhenComplete, focused, editEpoch])
-
-  useEffect(() => {
-    if (locked || saving) return
-
-    if (saveWhenComplete) {
-      if (getCommitPhase() !== 'ready') return
-      if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-
-      autoSaveRef.current = setTimeout(() => {
-        void commitSave()
-      }, INPUT_PAUSE_MS)
-      return () => {
-        if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-      }
-    }
-
-    if (!focused) return
-    if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-
-    const predHome = prediction?.home ?? 0
-    const predAway = prediction?.away ?? 0
-    const scoresChanged = homeScore !== predHome || awayScore !== predAway
-    const isNewCommit =
-      !prediction && homeEditedRef.current && awayEditedRef.current
-
-    if (scoresChanged || isNewCommit) {
-      autoSaveRef.current = setTimeout(() => {
-        void handleSave(homeScore, awayScore)
-      }, INPUT_PAUSE_MS)
-    }
-    return () => {
-      if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
-    }
-  }, [homeScore, awayScore, locked, saving, prediction?.home, prediction?.away, saveWhenComplete, focused, editEpoch])
+  function SaveControls() {
+    return (
+      <div className="match-card-save-controls">
+        <PredictionSaveSwitch
+          saved={saved}
+          dirty={dirty}
+          saving={saving}
+          disabled={locked || !isValidScore(homeScore) || !isValidScore(awayScore)}
+          onSave={handleSaveSwitch}
+        />
+        <SaveErrorMessage />
+      </div>
+    )
+  }
 
   const cardClass = [
     'match-card scroll-target',
@@ -428,7 +294,7 @@ export function MatchCard({
           <span className="match-card-meta-venue">{match.venue}</span>
         </div>
         <div className="match-card-header-badge">
-          <MatchStatusBadge status={status} saved={saved && !locked} />
+          <MatchStatusBadge status={status} saved={saved && !dirty && !locked} />
         </div>
       </div>
 
@@ -451,7 +317,6 @@ export function MatchCard({
                 className="score-input-inline"
                 aria-label={`Goals ${match.home.name}`}
                 onActivate={onActivate}
-                onEdited={markHomeEdited}
                 onTabNext={() => {
                   awayRef.current?.focus({ preventScroll: true })
                   awayRef.current?.select()
@@ -477,14 +342,11 @@ export function MatchCard({
                 className="score-input-inline"
                 aria-label={`Goals ${match.away.name}`}
                 onActivate={onActivate}
-                onEdited={markAwayEdited}
-                onTabNext={handleAwayComplete}
-                onBlurComplete={handleAwayComplete}
               />
             )}
           </div>
 
-          {locked && (
+          {locked ? (
             <div className="match-card-mobile-footer">
               <LockedScores
                 status={status}
@@ -494,12 +356,15 @@ export function MatchCard({
                 prediction={prediction}
                 points={points}
                 elapsed={match.elapsed}
+                statusShort={match.statusShort}
                 compact
               />
             </div>
+          ) : (
+            <div className="match-card-mobile-footer">
+              <SaveControls />
+            </div>
           )}
-
-          {!locked && <SaveErrorMessage />}
         </div>
       ) : (
         <div className="match-card-body-desktop">
@@ -521,35 +386,34 @@ export function MatchCard({
                 prediction={prediction}
                 points={points}
                 elapsed={match.elapsed}
+                statusShort={match.statusShort}
               />
             ) : (
-              <div className="match-card-score-row">
-              <ScoreInput
-                value={homeScore}
-                onChange={setHomeScore}
-                disabled={saving}
-                inputRef={homeRef}
-                aria-label={`Goals ${match.home.name}`}
-                onActivate={onActivate}
-                onEdited={markHomeEdited}
-                onTabNext={() => {
-                  awayRef.current?.focus({ preventScroll: true })
-                  awayRef.current?.select()
-                }}
-              />
-              <span className="match-card-score-sep">:</span>
-              <ScoreInput
-                value={awayScore}
-                onChange={setAwayScore}
-                disabled={saving}
-                inputRef={awayRef}
-                aria-label={`Goals ${match.away.name}`}
-                onActivate={onActivate}
-                onEdited={markAwayEdited}
-                onTabNext={handleAwayComplete}
-                onBlurComplete={handleAwayComplete}
-              />
-              <SaveErrorMessage />
+              <div className="match-card-score-column">
+                <div className="match-card-score-row">
+                  <ScoreInput
+                    value={homeScore}
+                    onChange={setHomeScore}
+                    disabled={saving}
+                    inputRef={homeRef}
+                    aria-label={`Goals ${match.home.name}`}
+                    onActivate={onActivate}
+                    onTabNext={() => {
+                      awayRef.current?.focus({ preventScroll: true })
+                      awayRef.current?.select()
+                    }}
+                  />
+                  <span className="match-card-score-sep">:</span>
+                  <ScoreInput
+                    value={awayScore}
+                    onChange={setAwayScore}
+                    disabled={saving}
+                    inputRef={awayRef}
+                    aria-label={`Goals ${match.away.name}`}
+                    onActivate={onActivate}
+                  />
+                </div>
+                <SaveControls />
               </div>
             )}
           </div>

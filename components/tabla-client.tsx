@@ -217,14 +217,9 @@ export function TablaClient({ players, myProfile }: Props) {
         </div>
       </div>
 
-      <div className="cell" style={{ marginBottom: '32px', position: 'relative' }}>
-        <span style={{ position:'absolute', top:'-3px', left:'-3px', width:'6px', height:'6px', background:'var(--fg-1)', zIndex:2 }} />
-        <span style={{ position:'absolute', top:'-3px', right:'-3px', width:'6px', height:'6px', background:'var(--fg-1)', zIndex:2 }} />
-        <span style={{ position:'absolute', bottom:'-3px', left:'-3px', width:'6px', height:'6px', background:'var(--fg-1)', zIndex:2 }} />
-        <span style={{ position:'absolute', bottom:'-3px', right:'-3px', width:'6px', height:'6px', background:'var(--fg-1)', zIndex:2 }} />
-
-        <div className={cn('tabla-profile-grid', !myRank && 'tabla-profile-grid-no-rank')}>
-          <div className="tabla-profile-info">
+      <div className="tabla-top-sections">
+        <div className="cell tabla-profile-card">
+          <div className="tabla-profile-card-inner">
             <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>— YOUR PROFILE</div>
 
             <button
@@ -278,7 +273,7 @@ export function TablaClient({ players, myProfile }: Props) {
 
             <button
               className="btn"
-              style={{ width: '100%', justifyContent: 'center', height: '32px' }}
+              style={{ width: '100%', justifyContent: 'center', height: '32px', marginTop: '12px' }}
               onClick={handleAvatarSelect}
               disabled={isUploading}
             >
@@ -291,17 +286,22 @@ export function TablaClient({ players, myProfile }: Props) {
               </p>
             )}
           </div>
+        </div>
 
-          <div className="tabla-profile-stat">
-            <span className="tabla-profile-stat-value">{myPoints}</span>
-            <span className="mono-label" style={{ color: 'var(--fg-3)' }}>POINTS</span>
-          </div>
-          {myRank && (
+        <div className={cn('cell tabla-standings-card', !myRank && 'tabla-standings-card-solo')}>
+          <div className="mono-label" style={{ color: 'var(--fg-3)', marginBottom: '16px' }}>— YOUR STANDING</div>
+          <div className="tabla-standings-grid">
             <div className="tabla-profile-stat">
-              <span className="tabla-profile-stat-value-accent">{myRank}</span>
-              <span className="mono-label" style={{ color: 'var(--fg-3)' }}>RANK</span>
+              <span className="tabla-profile-stat-value">{myPoints}</span>
+              <span className="mono-label" style={{ color: 'var(--fg-3)' }}>POINTS</span>
             </div>
-          )}
+            {myRank && (
+              <div className="tabla-profile-stat">
+                <span className="tabla-profile-stat-value-accent">{myRank}</span>
+                <span className="mono-label" style={{ color: 'var(--fg-3)' }}>RANK</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

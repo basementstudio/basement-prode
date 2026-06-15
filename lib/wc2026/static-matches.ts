@@ -59,7 +59,7 @@ function buildMatch(raw: RawMatch): Match {
     home: TEAMS[raw.home],
     away: TEAMS[raw.away],
     result: raw.result,
-    statusShort: raw.result ? 'FT' : undefined,
+    statusShort: raw.result != null ? 'FT' : undefined,
   }
 }
 

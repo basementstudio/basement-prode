@@ -8,8 +8,8 @@ export interface WorldCup26Game {
   id: string
   home_team_name_en: string
   away_team_name_en: string
-  home_score: string
-  away_score: string
+  home_score: string | number
+  away_score: string | number
   group: string
   local_date: string
   stadium_id: string
@@ -22,14 +22,26 @@ interface WorldCup26GamesResponse {
   games: WorldCup26Game[]
 }
 
-function parseScore(value: string): number | null {
-  if (!value || value === 'null') return null
-  const n = Number.parseInt(value, 10)
+function parseScore(value: string | number | null | undefined): number | null {
+  if (value == null || value === 'null') return null
+
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value >= 0 ? value : null
+  }
+
+  const trimmed = value.trim()
+  if (trimmed === '' || trimmed === 'null') return null
+
+  const n = Number.parseInt(trimmed, 10)
   return Number.isNaN(n) ? null : n
 }
 
 function gameLookupKey(group: string, homeCode: string, awayCode: string): string {
   return `${group}:${homeCode}:${awayCode}`
+}
+
+function teamsLookupKey(homeCode: string, awayCode: string): string {
+  return `${homeCode}:${awayCode}`
 }
 
 function mapGameStatus(game: WorldCup26Game): {
@@ -94,16 +106,20 @@ export function enrichMatchesFromWorldCup26(
   matches: Match[],
   games: WorldCup26Game[],
 ): Match[] {
+  const byGroupTeams = new Map<string, WorldCup26Game>()
   const byTeams = new Map<string, WorldCup26Game>()
+
   for (const game of games) {
     const homeCode = normalizeTeamCode(null, game.home_team_name_en)
     const awayCode = normalizeTeamCode(null, game.away_team_name_en)
-    byTeams.set(gameLookupKey(game.group, homeCode, awayCode), game)
+    byGroupTeams.set(gameLookupKey(game.group, homeCode, awayCode), game)
+    byTeams.set(teamsLookupKey(homeCode, awayCode), game)
   }
 
   return matches.map(match => {
-    const key = gameLookupKey(match.group, match.home.code, match.away.code)
-    const game = byTeams.get(key)
+    const groupKey = gameLookupKey(match.group, match.home.code, match.away.code)
+    const teamsKey = teamsLookupKey(match.home.code, match.away.code)
+    const game = byGroupTeams.get(groupKey) ?? byTeams.get(teamsKey)
     if (!game) return match
 
     const status = mapGameStatus(game)
@@ -112,19 +128,25 @@ export function enrichMatchesFromWorldCup26(
       ...match,
       result: status.result ?? match.result,
       liveScore: status.result ? undefined : status.liveScore ?? match.liveScore,
-      statusShort: status.statusShort,
+      statusShort: status.statusShort ?? match.statusShort,
       elapsed: status.elapsed ?? match.elapsed,
     }
   })
 }
 
 export function countEnrichedMatches(matches: Match[], games: WorldCup26Game[]): number {
-  const keys = new Set(
-    games.map(g => gameLookupKey(
-      g.group,
-      normalizeTeamCode(null, g.home_team_name_en),
-      normalizeTeamCode(null, g.away_team_name_en),
-    )),
-  )
-  return matches.filter(m => keys.has(gameLookupKey(m.group, m.home.code, m.away.code))).length
+  const groupKeys = new Set<string>()
+  const teamKeys = new Set<string>()
+
+  for (const game of games) {
+    const homeCode = normalizeTeamCode(null, game.home_team_name_en)
+    const awayCode = normalizeTeamCode(null, game.away_team_name_en)
+    groupKeys.add(gameLookupKey(game.group, homeCode, awayCode))
+    teamKeys.add(teamsLookupKey(homeCode, awayCode))
+  }
+
+  return matches.filter(m =>
+    groupKeys.has(gameLookupKey(m.group, m.home.code, m.away.code))
+    || teamKeys.has(teamsLookupKey(m.home.code, m.away.code)),
+  ).length
 }

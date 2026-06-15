@@ -252,7 +252,7 @@ export function PronosticosClient({
             Enter your picks.
           </h1>
           <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5' }}>
-            Home → away → next match, instantly. In By group, finishing the last match moves you to the next group. Times in {tzLabel}.
+            Home → away → flip Save to lock in your pick and jump to the next match. In By group, the last match in a group moves you to the next one. Times in {tzLabel}.
           </p>
         </div>
         <div className="page-shell-stat">
@@ -312,7 +312,6 @@ export function PronosticosClient({
                   focused={editable && isActive}
                   highlighted={isActive}
                   focusToken={isActive ? focusToken : 0}
-                  saveWhenComplete={editable && isActive}
                   onActivate={() => {
                     if (!editable) return
                     setActiveMatchId(match.id)

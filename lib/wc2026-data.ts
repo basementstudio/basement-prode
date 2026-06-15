@@ -42,13 +42,32 @@ export function getMatchStatus(match: Match, now: Date = new Date()): MatchStatu
   return 'finished'
 }
 
+export function getMatchLiveScore(match: Match): { home: number; away: number } | undefined {
+  return match.liveScore
+}
+
+export function getMatchFinalScore(match: Match): { home: number; away: number } | undefined {
+  return match.result ?? match.liveScore
+}
+
+/** Official final only — use for scoring, never liveScore. */
+export function getMatchOfficialResult(match: Match): { home: number; away: number } | undefined {
+  return match.result
+}
+
+/** Live → API score, or 0-0 until the feed updates. */
 export function getMatchDisplayScore(
   match: Match,
   status: MatchStatus,
 ): { home: number; away: number } | undefined {
-  if (match.result) return match.result
-  if (match.liveScore && (status === 'live' || status === 'finished')) return match.liveScore
-  return undefined
+  switch (status) {
+    case 'live':
+      return match.liveScore ?? { home: 0, away: 0 }
+    case 'finished':
+      return getMatchFinalScore(match)
+    default:
+      return getMatchFinalScore(match) ?? match.liveScore
+  }
 }
 
 export function isMatchLocked(match: Match, now: Date = new Date()): boolean {

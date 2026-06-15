@@ -8,15 +8,17 @@ function matchOutcome(score: PredictionScore): Outcome {
   return 'draw'
 }
 
-/** 3 pts for correct winner or draw; 6 only for exact score on a win/loss (not draws). */
+function isExactScore(pred: PredictionScore, result: PredictionScore): boolean {
+  return pred.home === result.home && pred.away === result.away
+}
+
+/** 6 pts for exact score (including 0-0 draws); 3 for correct winner or draw direction. */
 export function calcPoints(pred: PredictionScore, result: PredictionScore): number {
   const predOutcome = matchOutcome(pred)
   const resultOutcome = matchOutcome(result)
 
   if (predOutcome !== resultOutcome) return 0
-
-  const isExact = pred.home === result.home && pred.away === result.away
-  if (isExact && resultOutcome !== 'draw') return 6
+  if (isExactScore(pred, result)) return 6
 
   return 3
 }

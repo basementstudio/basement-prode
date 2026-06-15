@@ -25,13 +25,19 @@ async function loadGroupStageMatches(): Promise<GroupStageData> {
     const games = await fetchWorldCup26Games()
     const enriched = enrichMatchesFromWorldCup26(staticMatches, games)
     const matched = countEnrichedMatches(staticMatches, games)
+    const merged = mergeKnownResults(enriched)
 
-    if (games.length >= MIN_GROUP_MATCHES && matched >= MIN_GROUP_MATCHES) {
-      return { matches: mergeKnownResults(enriched), source: 'worldcup26' }
+    if (matched > 0) {
+      if (games.length < MIN_GROUP_MATCHES || matched < MIN_GROUP_MATCHES) {
+        console.warn(
+          `[wc2026] worldcup26.ir partial: ${games.length} games, ${matched} matched with local schedule`,
+        )
+      }
+      return { matches: merged, source: 'worldcup26' }
     }
 
     console.warn(
-      `[wc2026] worldcup26.ir: ${games.length} partidos, ${matched} emparejados con calendario local`,
+      `[wc2026] worldcup26.ir: ${games.length} games, 0 matched with local schedule`,
     )
   } catch (error) {
     console.error('[wc2026] Error al consultar worldcup26.ir:', error)
@@ -42,7 +48,7 @@ async function loadGroupStageMatches(): Promise<GroupStageData> {
 
 export const getGroupStageData = unstable_cache(
   loadGroupStageMatches,
-  ['wc2026-group-stage-v6', String(WC2026_MATCH_CACHE_SECONDS)],
+  ['wc2026-group-stage-v7', String(WC2026_MATCH_CACHE_SECONDS)],
   { revalidate: WC2026_MATCH_CACHE_SECONDS, tags: [WC2026_MATCH_CACHE_TAG] },
 )
 

@@ -143,7 +143,6 @@ export function GroupMatchesCarousel({
                       focused={isActive}
                       highlighted={isActive}
                       focusToken={isActive ? focusToken : 0}
-                      saveWhenComplete={isActive}
                       onActivate={() => onGroupMatchActivate(groupIndex, matchIndex)}
                       onSaved={() => onGroupMatchComplete(match.id)}
                       communityPicks={communityPicksByMatch[match.id] ?? []}

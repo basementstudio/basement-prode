@@ -12,6 +12,7 @@ import { formatTimezoneLabel, getUserTimezone } from '@/lib/wc2026/format-local'
 import { savePrediction } from '@/lib/actions'
 import type { RevealedMatchPrediction } from '@/lib/match-predictions'
 import { MatchCard } from '@/components/match-card'
+import { CollapsibleFinishedMatch } from '@/components/collapsible-finished-match'
 
 type StatusFilter = 'live' | 'finished'
 type PredMap = Record<string, { home: number; away: number }>
@@ -100,17 +101,28 @@ export function MatchesStatusClient({
         </div>
       ) : (
         <div style={{ border: '1px solid var(--fg-4)' }}>
-          {filteredMatches.map(match => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              prediction={predictions[match.id]}
-              onSave={handleSave}
-              now={now}
-              userTz={userTz}
-              communityPicks={communityPicksByMatch[match.id] ?? []}
-            />
-          ))}
+          {filteredMatches.map((match, index) => {
+            const cardProps = {
+              match,
+              prediction: predictions[match.id],
+              onSave: handleSave,
+              now,
+              userTz,
+              communityPicks: communityPicksByMatch[match.id] ?? [],
+            }
+
+            if (filter === 'finished') {
+              return (
+                <CollapsibleFinishedMatch
+                  key={match.id}
+                  {...cardProps}
+                  defaultExpanded={index === 0}
+                />
+              )
+            }
+
+            return <MatchCard key={match.id} {...cardProps} />
+          })}
         </div>
       )}
     </div>

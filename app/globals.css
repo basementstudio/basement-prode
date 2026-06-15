@@ -654,6 +654,220 @@
   gap: 12px;
 }
 
+@utility match-card-score-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+@utility match-card-save-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+@utility prediction-save-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: default;
+  color: var(--fg-3);
+
+  &.is-ready {
+    cursor: pointer;
+    color: var(--fg-2);
+
+    &:hover .prediction-save-switch-track {
+      border-color: var(--color-contrast);
+    }
+  }
+
+  &.is-on {
+    color: var(--color-contrast);
+  }
+
+  &:disabled:not(.is-on) {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+@utility prediction-save-switch-track {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border: 1px solid var(--fg-4);
+  background: transparent;
+  transition:
+    border-color var(--duration-fast) var(--ease-base),
+    background var(--duration-fast) var(--ease-base);
+
+  .prediction-save-switch.is-on & {
+    border-color: var(--color-contrast);
+    background: rgba(255, 77, 0, 0.18);
+  }
+
+  .prediction-save-switch.is-ready & {
+    border-color: var(--fg-3);
+  }
+}
+
+@utility prediction-save-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--fg-3);
+  transition:
+    transform var(--duration-fast) var(--ease-base),
+    background var(--duration-fast) var(--ease-base);
+
+  .prediction-save-switch.is-on & {
+    transform: translateX(18px);
+    background: var(--color-contrast);
+  }
+
+  .prediction-save-switch.is-ready & {
+    background: var(--fg-2);
+  }
+}
+
+@utility prediction-save-switch-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+@utility finished-match-accordion {
+  border-bottom: 1px solid var(--fg-4);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+@utility finished-match-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-base);
+
+  &:hover {
+    background: rgba(235, 235, 235, 0.03);
+  }
+}
+
+@utility finished-match-summary-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+@utility finished-match-summary-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 72px;
+}
+
+@utility finished-match-summary-team--away {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+@utility finished-match-summary-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--fg-2);
+}
+
+@utility finished-match-summary-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--fg-1);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility finished-match-summary-sep {
+  color: var(--fg-4);
+  font-weight: 300;
+}
+
+@utility finished-match-summary-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+@utility finished-match-summary-group {
+  color: var(--fg-4);
+}
+
+@utility finished-match-summary-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--fg-3);
+  transition: transform var(--duration-fast) var(--ease-base);
+}
+
+@utility finished-match-accordion--expanded {
+  & .finished-match-summary-chevron {
+    transform: rotate(180deg);
+  }
+}
+
+@utility finished-match-details {
+  border-top: 1px solid var(--fg-4);
+  padding: 0 0 4px;
+}
+
+@utility finished-match-details-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  padding: 10px 16px;
+  color: var(--fg-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--fg-4);
+}
+
+@utility finished-match-meta-sep {
+  color: var(--fg-4);
+}
+
+@utility finished-match-meta-venue {
+  color: var(--fg-4);
+
+  @media (max-width: 640px) {
+    display: none;
+  }
+}
+
 @utility match-card-score-sep {
   font-size: 28px;
   font-weight: 300;
@@ -1213,6 +1427,65 @@
   font-variant-numeric: tabular-nums;
 }
 
+@utility tabla-top-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+@utility tabla-profile-card {
+  flex: 1.2;
+  min-width: 0;
+}
+
+@utility tabla-profile-card-inner {
+  padding: 20px 16px;
+
+  @media (min-width: 640px) {
+    padding: 24px 28px;
+  }
+}
+
+@utility tabla-standings-card {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+
+  @media (min-width: 640px) {
+    padding: 24px 28px;
+  }
+}
+
+@utility tabla-standings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1;
+  align-items: center;
+  border: 1px solid var(--fg-4);
+
+  & .tabla-profile-stat:first-child {
+    border-right: 1px solid var(--fg-4);
+  }
+}
+
+@utility tabla-standings-card-solo {
+  & .tabla-standings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  & .tabla-profile-stat:first-child {
+    border-right: none;
+  }
+}
+
 @utility tabla-profile-grid {
   display: flex;
   flex-direction: column;
@@ -1241,28 +1514,13 @@
 }
 
 @utility tabla-profile-stat {
-  padding: 20px 16px;
+  padding: 12px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
   text-align: center;
-  border-bottom: 1px solid var(--fg-4);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  @media (min-width: 640px) {
-    padding: 24px 20px;
-    border-bottom: none;
-    border-right: 1px solid var(--fg-4);
-
-    &:last-child {
-      border-right: none;
-    }
-  }
 }
 
 @utility tabla-profile-stat-value {
@@ -1296,9 +1554,6 @@
 }
 
 @utility tabla-table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-
   & .dtable th,
   & .dtable td {
     @media (max-width: 639px) {
