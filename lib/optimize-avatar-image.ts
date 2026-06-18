@@ -1,5 +1,3 @@
-import 'server-only'
-
 import sharp from 'sharp'
 
 export const AVATAR_MAX_DIMENSION = 256
