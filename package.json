@@ -11,9 +11,7 @@
     "db:reset": "bun scripts/reset-db.ts",
     "db:migrate": "bun scripts/migrate.ts",
     "db:up": "docker compose up -d",
-    "db:down": "docker compose down",
-    "tigris:set-cors": "bun scripts/set-tigris-cors.ts",
-    "avatars:migrate-tigris": "bun scripts/migrate-avatars-to-tigris.ts"
+    "db:down": "docker compose down"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -42,7 +40,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.0",
-    "@tigrisdata/storage": "^3.13.0",
     "@types/node": "^24",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
