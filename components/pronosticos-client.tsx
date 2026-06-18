@@ -28,15 +28,6 @@ interface Props {
   communityPicksByMatch: Record<string, RevealedMatchPrediction[]>
 }
 
-function findNextEditableMatch(list: Match[], afterId: string, now: Date): Match | undefined {
-  const start = list.findIndex(m => m.id === afterId)
-  if (start < 0) return undefined
-  for (let i = start + 1; i < list.length; i++) {
-    if (!isMatchLocked(list[i], now)) return list[i]
-  }
-  return undefined
-}
-
 function firstEditableMatchId(list: Match[], now: Date): string | null {
   const match = list.find(m => !isMatchLocked(m, now))
   return match?.id ?? null
@@ -103,6 +94,11 @@ export function PronosticosClient({
     [sortedMatches, now],
   )
 
+  const pendingMatches = useMemo(
+    () => upcoming.filter(m => !predictions[m.id]),
+    [upcoming, predictions],
+  )
+
   const groupsUpcoming = useMemo(() => {
     const groups: { group: string; matches: Match[] }[] = []
     for (const match of upcoming) {
@@ -123,19 +119,19 @@ export function PronosticosClient({
   useEffect(() => {
     if (initializedRef.current) return
     initializedRef.current = true
-    setActiveMatchId(firstEditableMatchId(sortedMatches, now))
-  }, [sortedMatches, now])
+    setActiveMatchId(firstEditableMatchId(pendingMatches, now))
+  }, [pendingMatches, now])
 
   useEffect(() => {
     if (viewMode === 'todos') {
       setActiveMatchId(prev => {
-        if (prev && sortedMatches.some(m => m.id === prev && !isMatchLocked(m, now))) {
+        if (prev && pendingMatches.some(m => m.id === prev)) {
           return prev
         }
-        return firstEditableMatchId(sortedMatches, now)
+        return firstEditableMatchId(pendingMatches, now)
       })
     }
-  }, [viewMode, sortedMatches, now])
+  }, [viewMode, pendingMatches, now])
 
   useEffect(() => {
     const enteringPorGrupo = viewMode === 'por-grupo' && prevViewModeRef.current !== 'por-grupo'
@@ -184,14 +180,15 @@ export function PronosticosClient({
   }, [])
 
   const handleTodosMatchComplete = useCallback((matchId: string) => {
-    const next = findNextEditableMatch(sortedMatches, matchId, now)
+    const remaining = pendingMatches.filter(m => m.id !== matchId)
+    const next = remaining.find(m => !isMatchLocked(m, now))
     if (next) {
       setActiveMatchId(next.id)
       bumpFocus(next.id)
     } else {
       setActiveMatchId(null)
     }
-  }, [sortedMatches, now, bumpFocus])
+  }, [pendingMatches, now, bumpFocus])
 
   const handleGroupMatchComplete = useCallback((matchId: string) => {
     const group = groupsUpcomingRef.current[currentGroupIndex]
@@ -229,7 +226,7 @@ export function PronosticosClient({
   }, [currentGroupIndex, bumpFocus])
 
   const viewOptions: { key: ViewMode; label: string; count: number }[] = [
-    { key: 'todos', label: 'All', count: matches.length },
+    { key: 'todos', label: 'All', count: pendingMatches.length },
     { key: 'por-grupo', label: 'By group', count: groupsUpcoming.length },
   ]
 
@@ -294,12 +291,11 @@ export function PronosticosClient({
       </div>
 
       {viewMode === 'todos' && (
-        sortedMatches.length === 0 ? (
-          <EmptyState message="No matches" />
+        pendingMatches.length === 0 ? (
+          <EmptyState message="No matches left to pick" />
         ) : (
           <div style={{ border: '1px solid var(--fg-4)' }}>
-            {sortedMatches.map(match => {
-              const editable = !isMatchLocked(match, now)
+            {pendingMatches.map(match => {
               const isActive = activeMatchId === match.id
               return (
                 <MatchCard
@@ -309,11 +305,10 @@ export function PronosticosClient({
                   onSave={handleSave}
                   now={now}
                   userTz={userTz}
-                  focused={editable && isActive}
+                  focused={isActive}
                   highlighted={isActive}
                   focusToken={isActive ? focusToken : 0}
                   onActivate={() => {
-                    if (!editable) return
                     setActiveMatchId(match.id)
                     setFocusToken(t => t + 1)
                   }}
