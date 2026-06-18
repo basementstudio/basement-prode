@@ -45,6 +45,7 @@ const fallbackTextVariants = cva(
 interface UserAvatarProps extends VariantProps<typeof userAvatarVariants> {
   name: string
   imageUrl?: string | null
+  highlight?: boolean
   className?: string
 }
 
@@ -52,10 +53,11 @@ export function UserAvatar({
   name,
   imageUrl,
   size = 'md',
+  highlight = false,
   className,
 }: UserAvatarProps) {
   return (
-    <Avatar className={cn(userAvatarVariants({ size }), className)}>
+    <Avatar className={cn(userAvatarVariants({ size }), highlight && 'highlight-flash', className)}>
       {imageUrl ? (
         <AvatarImage src={imageUrl} alt={name} className="rounded-full object-cover" />
       ) : null}

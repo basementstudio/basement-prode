@@ -31,22 +31,34 @@ export function usernameRecoverPlugin() {
           const pin = ctx.body.pin
 
           if (!normalized || !isValidRecoveryPin(pin)) {
-            throw APIError.from('BAD_REQUEST', { message: 'INVALID_CREDENTIALS' })
+            throw APIError.from('BAD_REQUEST', {
+              code: 'INVALID_CREDENTIALS',
+              message: 'INVALID_CREDENTIALS',
+            })
           }
 
           const profile = await findProfileByDisplayName(normalized)
           if (!profile || !isProfileComplete(profile) || !profile.recoveryPinHash) {
-            throw APIError.from('UNAUTHORIZED', { message: 'INVALID_CREDENTIALS' })
+            throw APIError.from('UNAUTHORIZED', {
+              code: 'INVALID_CREDENTIALS',
+              message: 'INVALID_CREDENTIALS',
+            })
           }
 
           const pinValid = await verifyRecoveryPin(pin, profile.recoveryPinHash)
           if (!pinValid) {
-            throw APIError.from('UNAUTHORIZED', { message: 'INVALID_CREDENTIALS' })
+            throw APIError.from('UNAUTHORIZED', {
+              code: 'INVALID_CREDENTIALS',
+              message: 'INVALID_CREDENTIALS',
+            })
           }
 
           const targetUser = await ctx.context.internalAdapter.findUserById(profile.userId)
           if (!targetUser) {
-            throw APIError.from('UNAUTHORIZED', { message: 'INVALID_CREDENTIALS' })
+            throw APIError.from('UNAUTHORIZED', {
+              code: 'INVALID_CREDENTIALS',
+              message: 'INVALID_CREDENTIALS',
+            })
           }
 
           const existingSession = await getSessionFromCtx(ctx, { disableRefresh: true })
@@ -57,7 +69,10 @@ export function usernameRecoverPlugin() {
 
           const session = await ctx.context.internalAdapter.createSession(targetUser.id)
           if (!session) {
-            throw APIError.from('INTERNAL_SERVER_ERROR', { message: 'SESSION_FAILED' })
+            throw APIError.from('INTERNAL_SERVER_ERROR', {
+              code: 'SESSION_FAILED',
+              message: 'SESSION_FAILED',
+            })
           }
 
           await setSessionCookie(ctx, { session, user: targetUser })

@@ -6,8 +6,8 @@ import { UserAvatar } from '@/components/user-avatar'
 import { NameTakenDialog } from '@/components/name-taken-dialog'
 import { LeaderboardNameBadge } from '@/components/leaderboard-name-badge'
 import { LeaderboardTable } from '@/components/leaderboard-table'
-import { updateProfile, updateAvatar, type LeaderboardPlayer } from '@/lib/actions'
-import { compressImageFile } from '@/lib/avatar-utils'
+import { saveMyProfile, type LeaderboardPlayer } from '@/lib/actions'
+import { uploadAvatarFromFile } from '@/lib/upload-avatar-client'
 import { buildWorstBoardPlayers } from '@/lib/leaderboard-stats'
 import { cn } from '@/lib/utils'
 import { PRIZES_BY_RANK } from '@/lib/prizes'
@@ -123,45 +123,43 @@ function PodiumCell({
 export function TablaClient({ players, myProfile }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewObjectUrlRef = useRef<string | null>(null)
   const [boardMode, setBoardMode] = useState<BoardMode>('ranking')
-  const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(myProfile.resolvedName)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(myProfile.avatarUrl)
-  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
   const [nameTakenOpen, setNameTakenOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
-  const [isUploading, startUpload] = useTransition()
+  const [isSaving, startSave] = useTransition()
 
   useEffect(() => {
     setNameValue(myProfile.resolvedName)
-  }, [myProfile.resolvedName])
+    setAvatarPreview(myProfile.avatarUrl)
+    setPendingAvatarFile(null)
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current)
+      previewObjectUrlRef.current = null
+    }
+  }, [myProfile.resolvedName, myProfile.avatarUrl])
+
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current)
+      }
+    }
+  }, [])
+
+  const isProfileDirty =
+    nameValue.trim() !== myProfile.resolvedName || pendingAvatarFile !== null
 
   const myRank = players.find(p => p.id === myProfile.userId)?.rank
   const myPoints = players.find(p => p.id === myProfile.userId)?.points ?? 0
   const worstPlayers = useMemo(() => buildWorstBoardPlayers(players), [players])
   const myWorstRank = worstPlayers.find(p => p.id === myProfile.userId)?.worstRank
 
-  function handleNameSave() {
-    const trimmed = nameValue.trim()
-    if (!trimmed) return
-
-    startTransition(async () => {
-      try {
-        await updateProfile(trimmed)
-        setEditingName(false)
-        router.refresh()
-      } catch (err) {
-        if (err instanceof Error && err.message === 'NAME_TAKEN') {
-          setNameTakenOpen(true)
-          return
-        }
-        setUploadError(err instanceof Error ? err.message : 'Could not update name')
-      }
-    })
-  }
-
   function handleAvatarSelect() {
-    setUploadError(null)
+    setProfileError(null)
     fileInputRef.current?.click()
   }
 
@@ -170,15 +168,57 @@ export function TablaClient({ players, myProfile }: Props) {
     e.target.value = ''
     if (!file) return
 
-    startUpload(async () => {
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current)
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+    previewObjectUrlRef.current = objectUrl
+    setAvatarPreview(objectUrl)
+    setPendingAvatarFile(file)
+    setProfileError(null)
+  }
+
+  function handleCancelProfile() {
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current)
+      previewObjectUrlRef.current = null
+    }
+    setNameValue(myProfile.resolvedName)
+    setAvatarPreview(myProfile.avatarUrl)
+    setPendingAvatarFile(null)
+    setProfileError(null)
+  }
+
+  function handleSaveProfile() {
+    const trimmed = nameValue.trim()
+    if (!trimmed) {
+      setProfileError('Enter a name.')
+      return
+    }
+
+    startSave(async () => {
       try {
-        const dataUrl = await compressImageFile(file)
-        setAvatarPreview(dataUrl)
-        await updateAvatar(dataUrl)
+        let avatarUrl: string | undefined
+        if (pendingAvatarFile) {
+          avatarUrl = await uploadAvatarFromFile(pendingAvatarFile)
+        }
+
+        await saveMyProfile(trimmed, avatarUrl)
+
+        if (previewObjectUrlRef.current) {
+          URL.revokeObjectURL(previewObjectUrlRef.current)
+          previewObjectUrlRef.current = null
+        }
+        setPendingAvatarFile(null)
+        setProfileError(null)
         router.refresh()
       } catch (err) {
-        setUploadError(err instanceof Error ? err.message : 'Could not upload photo')
-        setAvatarPreview(myProfile.avatarUrl)
+        if (err instanceof Error && err.message === 'NAME_TAKEN') {
+          setNameTakenOpen(true)
+          return
+        }
+        setProfileError(err instanceof Error ? err.message : 'Could not save profile')
       }
     })
   }
@@ -226,8 +266,8 @@ export function TablaClient({ players, myProfile }: Props) {
               type="button"
               className="mb-4 cursor-pointer transition-opacity disabled:cursor-wait disabled:opacity-60 hover:enabled:opacity-80"
               onClick={handleAvatarSelect}
-              disabled={isUploading}
-              aria-label="Upload profile photo"
+              disabled={isSaving}
+              aria-label="Change profile photo"
             >
               <UserAvatar name={nameValue} imageUrl={avatarPreview} size="lg" highlight />
             </button>
@@ -240,49 +280,54 @@ export function TablaClient({ players, myProfile }: Props) {
               hidden
             />
 
-            {editingName ? (
-              <div style={{ display: 'flex', gap: '0', marginBottom: '8px' }}>
-                <input
-                  className="input"
-                  value={nameValue}
-                  onChange={e => setNameValue(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleNameSave()}
-                  style={{ flex: 1, height: '36px' }}
-                  autoFocus
-                />
-                <button
-                  className="btn solid"
-                  onClick={handleNameSave}
-                  disabled={isPending}
-                  style={{ borderLeft: 'none' }}
-                >
-                  OK
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="profile-name-edit"
-                onClick={() => setEditingName(true)}
-                title="Click to edit name"
-              >
-                <span style={{ fontWeight: 600, fontSize: '18px', color: 'var(--fg-1)' }}>{nameValue}</span>
-                <span className="mono-label" style={{ color: 'var(--fg-4)', fontSize: '10px' }}>EDIT</span>
-              </button>
-            )}
+            <label className="mono-label" style={{ display: 'block', color: 'var(--fg-3)', marginBottom: '8px' }}>
+              Your name
+            </label>
+            <input
+              className="input"
+              value={nameValue}
+              onChange={e => {
+                setNameValue(e.target.value)
+                setProfileError(null)
+              }}
+              style={{ width: '100%', height: '36px', marginBottom: '12px' }}
+              maxLength={40}
+              disabled={isSaving}
+            />
 
             <button
               className="btn"
-              style={{ width: '100%', justifyContent: 'center', height: '32px', marginTop: '12px' }}
+              style={{ width: '100%', justifyContent: 'center', height: '32px' }}
               onClick={handleAvatarSelect}
-              disabled={isUploading}
+              disabled={isSaving}
             >
-              {isUploading ? 'Uploading…' : 'Upload photo'}
+              Change photo
             </button>
 
-            {uploadError && (
+            {isProfileDirty && (
+              <div style={{ display: 'flex', gap: '0', marginTop: '12px' }}>
+                <button
+                  className="btn solid"
+                  style={{ flex: 1, justifyContent: 'center', height: '36px' }}
+                  onClick={handleSaveProfile}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving…' : 'Save profile'}
+                </button>
+                <button
+                  className="btn"
+                  style={{ flex: 1, justifyContent: 'center', height: '36px', borderLeft: 'none' }}
+                  onClick={handleCancelProfile}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {profileError && (
               <p className="mono-label" style={{ color: 'var(--color-contrast)', marginTop: '8px', fontSize: '10px' }}>
-                {uploadError}
+                {profileError}
               </p>
             )}
           </div>

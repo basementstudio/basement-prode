@@ -1,6 +1,7 @@
 'use server'
 
-import { auth } from '@/lib/auth'
+import { requireAuthUserId, getAuthSession } from '@/lib/auth-session'
+import { getCachedUserProfile, getMyProfileData } from '@/lib/profile-server'
 import { db } from '@/lib/db'
 import { predictions, userProfiles, user, predictionVotes, accountBurnVotes } from '@/lib/db/schema'
 import { ACCOUNT_BURN_VOTE_THRESHOLD } from '@/lib/account-burn'
@@ -13,25 +14,35 @@ import { calcPoints } from '@/lib/scoring'
 import { isValidScore } from '@/lib/score'
 import type { Match } from '@/lib/wc2026/types'
 import { and, eq, inArray } from 'drizzle-orm'
-import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
-import { resolveDisplayName } from '@/lib/display-name'
 import { isProfileComplete, normalizeDisplayName } from '@/lib/profile'
+import { isValidStoredAvatarUrl } from '@/lib/avatar-url'
 import { isDisplayNameTaken, upsertProfile } from '@/lib/user-profile'
 
 async function getUserId() {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) {
-    throw new Error('Session expired — sign in again with your name and PIN.')
-  }
-  return session.user.id
+  return requireAuthUserId()
 }
 
 async function getSessionUser() {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getAuthSession()
   if (!session?.user) return null
   return session.user
+}
+
+export async function getProfileStatus() {
+  const sessionUser = await getSessionUser()
+  if (!sessionUser) {
+    return { authenticated: false as const, complete: false }
+  }
+
+  const profile = await getCachedUserProfile(sessionUser.id)
+
+  return {
+    authenticated: true as const,
+    complete: isProfileComplete(profile),
+    userId: sessionUser.id,
+  }
 }
 
 export async function checkDisplayNameAvailable(displayName: string) {
@@ -42,25 +53,6 @@ export async function checkDisplayNameAvailable(displayName: string) {
   }
   const taken = await isDisplayNameTaken(normalized, userId)
   return { available: !taken, error: taken ? 'That name is already in use.' : null }
-}
-
-export async function getProfileStatus() {
-  const sessionUser = await getSessionUser()
-  if (!sessionUser) {
-    return { authenticated: false as const, complete: false }
-  }
-
-  const profile = await db
-    .select()
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, sessionUser.id))
-    .limit(1)
-
-  return {
-    authenticated: true as const,
-    complete: isProfileComplete(profile[0]),
-    userId: sessionUser.id,
-  }
 }
 
 export async function getPredictions(): Promise<Record<string, { home: number; away: number }>> {
@@ -140,17 +132,52 @@ export type { RevealedMatchPrediction } from '@/lib/match-predictions'
 
 export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
   const viewerUserId = await getUserId()
-  const allUsers = await db.select().from(user)
-  const allPreds = await db.select().from(predictions)
-  const allProfiles = await db.select().from(userProfiles)
-  const allBurnVotes = await db
-    .select({
-      targetUserId: accountBurnVotes.targetUserId,
-      voterId: accountBurnVotes.voterId,
-    })
-    .from(accountBurnVotes)
 
-  const allMatches = await getGroupStageMatches()
+  const [allPreds, allProfiles, allBurnVotes, allMatches] = await Promise.all([
+    db
+      .select({
+        userId: predictions.userId,
+        matchId: predictions.matchId,
+        homeScore: predictions.homeScore,
+        awayScore: predictions.awayScore,
+      })
+      .from(predictions),
+    db
+      .select({
+        userId: userProfiles.userId,
+        displayName: userProfiles.displayName,
+        avatarUrl: userProfiles.avatarUrl,
+        burnedAt: userProfiles.burnedAt,
+      })
+      .from(userProfiles),
+    db
+      .select({
+        targetUserId: accountBurnVotes.targetUserId,
+        voterId: accountBurnVotes.voterId,
+      })
+      .from(accountBurnVotes),
+    getGroupStageMatches(),
+  ])
+
+  const eligibleUserIds = new Set(allPreds.map(p => p.userId))
+  for (const profile of allProfiles) {
+    if (isProfileComplete(profile)) {
+      eligibleUserIds.add(profile.userId)
+    }
+  }
+
+  const allUsers =
+    eligibleUserIds.size === 0
+      ? []
+      : await db
+          .select({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+          })
+          .from(user)
+          .where(inArray(user.id, [...eligibleUserIds]))
+
   const playedMatches = allMatches
     .filter(m => m.result != null)
     .map(m => ({ id: m.id, result: m.result! }))
@@ -276,10 +303,37 @@ export async function getRevealedPredictionsByMatchIds(
 
   if (relevantIds.length === 0) return {}
 
-  const [allPreds, allProfiles, allUsers] = await Promise.all([
-    db.select().from(predictions).where(inArray(predictions.matchId, relevantIds)),
-    db.select().from(userProfiles),
-    db.select().from(user),
+  const allPreds = await db
+    .select({
+      id: predictions.id,
+      userId: predictions.userId,
+      matchId: predictions.matchId,
+      homeScore: predictions.homeScore,
+      awayScore: predictions.awayScore,
+    })
+    .from(predictions)
+    .where(inArray(predictions.matchId, relevantIds))
+
+  if (allPreds.length === 0) return {}
+
+  const authorUserIds = [...new Set(allPreds.map(p => p.userId))]
+  const [allProfiles, allUsers] = await Promise.all([
+    db
+      .select({
+        userId: userProfiles.userId,
+        displayName: userProfiles.displayName,
+        avatarUrl: userProfiles.avatarUrl,
+      })
+      .from(userProfiles)
+      .where(inArray(userProfiles.userId, authorUserIds)),
+    db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      })
+      .from(user)
+      .where(inArray(user.id, authorUserIds)),
   ])
 
   const predictionIds = allPreds.map(p => p.id)
@@ -432,32 +486,10 @@ export async function getMyScoredPredictions(): Promise<{
 }
 
 export async function getMyProfile() {
-  const userId = await getUserId()
-  const session = await auth.api.getSession({ headers: await headers() })
-  const profile = await db
-    .select()
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, userId))
-    .limit(1)
-  const email = session!.user.email
-  const authName = session!.user.name
-  const storedDisplayName = profile[0]?.displayName || null
-
-  return {
-    userId,
-    email,
-    name: authName,
-    displayName: storedDisplayName,
-    resolvedName: resolveDisplayName({
-      displayName: storedDisplayName,
-      name: authName,
-      email,
-    }),
-    avatarUrl: profile[0]?.avatarUrl || null,
-  }
+  return getMyProfileData()
 }
 
-export async function updateProfile(displayName: string) {
+export async function saveMyProfile(displayName: string, avatarUrl?: string) {
   const userId = await getUserId()
   const normalized = normalizeDisplayName(displayName)
 
@@ -467,23 +499,16 @@ export async function updateProfile(displayName: string) {
     throw new Error('NAME_TAKEN')
   }
 
-  await db.update(user).set({ name: normalized, updatedAt: new Date() }).where(eq(user.id, userId))
-  await upsertProfile(userId, { displayName: normalized })
-  revalidatePath('/tabla')
-}
-
-export async function updateAvatar(avatarUrl: string) {
-  const userId = await getUserId()
-
-  if (!avatarUrl.startsWith('data:image/')) {
+  if (avatarUrl !== undefined && !isValidStoredAvatarUrl(avatarUrl)) {
     throw new Error('Invalid image')
   }
 
-  if (avatarUrl.length > 700_000) {
-    throw new Error('Image is too large')
-  }
+  await db.update(user).set({ name: normalized, updatedAt: new Date() }).where(eq(user.id, userId))
+  await upsertProfile(userId, {
+    displayName: normalized,
+    ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+  })
 
-  await upsertProfile(userId, { avatarUrl })
   revalidatePath('/tabla')
   revalidatePath('/pronosticos')
 }

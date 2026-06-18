@@ -7,7 +7,7 @@ const usernameRecoverClient = () => ({
   id: 'username-recover',
   pathMethods: {
     '/recover/by-username': 'POST',
-  },
+  } as const,
   atomListeners: [
     {
       matcher: (path: string) => path === '/recover/by-username',
@@ -20,7 +20,7 @@ const onboardingClient = () => ({
   id: 'onboarding',
   pathMethods: {
     '/complete-onboarding': 'POST',
-  },
+  } as const,
   atomListeners: [
     {
       matcher: (path: string) => path === '/complete-onboarding',

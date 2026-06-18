@@ -5,20 +5,21 @@ import { user, userProfiles } from '@/lib/db/schema'
 import { normalizeDisplayName } from '@/lib/profile'
 import { isValidRecoveryPin, recoveryPinError } from '@/lib/recovery-pin'
 import { hashRecoveryPin } from '@/lib/recovery-pin-server'
-import { eq } from 'drizzle-orm'
+import { isValidStoredAvatarUrl } from '@/lib/avatar-url'
+import { and, eq, ne, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 export async function findProfileByDisplayName(displayName: string) {
   const normalized = normalizeDisplayName(displayName).toLowerCase()
   if (!normalized) return null
 
-  const profiles = await db.select().from(userProfiles)
-  return (
-    profiles.find(
-      profile =>
-        normalizeDisplayName(profile.displayName ?? '').toLowerCase() === normalized,
-    ) ?? null
-  )
+  const rows = await db
+    .select()
+    .from(userProfiles)
+    .where(sql`lower(trim(${userProfiles.displayName})) = ${normalized}`)
+    .limit(1)
+
+  return rows[0] ?? null
 }
 
 export async function isDisplayNameTaken(
@@ -28,12 +29,18 @@ export async function isDisplayNameTaken(
   const normalized = normalizeDisplayName(displayName).toLowerCase()
   if (!normalized) return false
 
-  const profiles = await db.select().from(userProfiles)
-  return profiles.some(profile => {
-    if (excludeUserId && profile.userId === excludeUserId) return false
-    const existing = normalizeDisplayName(profile.displayName ?? '').toLowerCase()
-    return existing === normalized
-  })
+  const conditions = [sql`lower(trim(${userProfiles.displayName})) = ${normalized}`]
+  if (excludeUserId) {
+    conditions.push(ne(userProfiles.userId, excludeUserId))
+  }
+
+  const rows = await db
+    .select({ userId: userProfiles.userId })
+    .from(userProfiles)
+    .where(and(...conditions))
+    .limit(1)
+
+  return rows.length > 0
 }
 
 export async function upsertProfile(
@@ -74,8 +81,7 @@ export async function runCompleteOnboarding(
     throw new Error('NAME_TAKEN')
   }
   if (!isValidRecoveryPin(recoveryPin)) throw new Error(recoveryPinError())
-  if (!avatarUrl.startsWith('data:image/')) throw new Error('Invalid image')
-  if (avatarUrl.length > 700_000) throw new Error('Image is too large')
+  if (!isValidStoredAvatarUrl(avatarUrl)) throw new Error('Invalid image')
 
   const recoveryPinHash = await hashRecoveryPin(recoveryPin)
 

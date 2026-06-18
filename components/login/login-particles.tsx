@@ -23,11 +23,14 @@ export function LoginParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const el = canvasRef.current
+    if (!el) return
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    const context = el.getContext('2d')
+    if (!context) return
+
+    const canvas: HTMLCanvasElement = el
+    const ctx: CanvasRenderingContext2D = context
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let width = 0

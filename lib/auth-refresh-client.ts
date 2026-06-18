@@ -10,6 +10,15 @@ export async function syncAuthSessionAndRefresh(router: AppRouterInstance) {
   router.refresh()
 }
 
+/** Tras login/recover: confirma sesión y revalida en una sola llamada a la API. */
+export async function ensureAuthenticatedAndRefresh(
+  router: AppRouterInstance,
+): Promise<boolean> {
+  const { data } = await authClient.getSession()
+  router.refresh()
+  return Boolean(data?.user)
+}
+
 /** Tras login/recover: confirma que hay sesión antes de navegar. */
 export async function ensureAuthenticatedSession(): Promise<boolean> {
   const { data } = await authClient.getSession()

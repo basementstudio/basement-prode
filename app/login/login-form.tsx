@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { UserAvatar } from '@/components/user-avatar'
 import { NameTakenDialog } from '@/components/name-taken-dialog'
 import {
-  ensureAuthenticatedSession,
+  ensureAuthenticatedAndRefresh,
+  ensureSignedOut,
   syncAuthSessionAndRefresh,
 } from '@/lib/auth-refresh-client'
 import { authClient } from '@/lib/auth-client'
-import { compressImageFile } from '@/lib/avatar-utils'
+import { uploadAvatarFromFile } from '@/lib/upload-avatar-client'
 import {
   isValidRecoveryPin,
   RECOVERY_PIN_MAX,
@@ -100,11 +101,10 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
         setError(result.error.message || 'Could not create account. Try again.')
         return
       }
-      if (!(await ensureAuthenticatedSession())) {
+      if (!(await ensureAuthenticatedAndRefresh(router))) {
         setError('Could not create session. Try again.')
         return
       }
-      await syncAuthSessionAndRefresh(router)
       setPhotoError('')
       setMode('create')
     } catch (err: unknown) {
@@ -145,11 +145,10 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
         return
       }
 
-      if (!(await ensureAuthenticatedSession())) {
+      if (!(await ensureAuthenticatedAndRefresh(router))) {
         setError('Could not sign in. Try again.')
         return
       }
-      await syncAuthSessionAndRefresh(router)
       router.push('/pronosticos')
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Could not sign in.'
@@ -175,8 +174,8 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
 
     startUpload(async () => {
       try {
-        const dataUrl = await compressImageFile(file)
-        setAvatarPreview(dataUrl)
+        const avatarUrl = await uploadAvatarFromFile(file)
+        setAvatarPreview(avatarUrl)
         setUploadError('')
         setPhotoError('')
       } catch (err) {
@@ -229,11 +228,10 @@ export function LoginForm({ profileComplete = false }: LoginFormProps) {
           return
         }
 
-        if (!(await ensureAuthenticatedSession())) {
+        if (!(await ensureAuthenticatedAndRefresh(router))) {
           setError('Profile saved but session is missing. Use Sign in with your name and PIN.')
           return
         }
-        await syncAuthSessionAndRefresh(router)
         router.push('/pronosticos')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not save profile. Try again.')
