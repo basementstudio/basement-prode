@@ -7,9 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "db:wipe": "bun scripts/wipe-db.ts",
     "db:reset": "bun scripts/reset-db.ts",
-    "db:migrate": "bun scripts/migrate.ts",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down"
   },
