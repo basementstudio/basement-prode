@@ -77,8 +77,17 @@ async function resetDb() {
       "matchId" text NOT NULL,
       "homeScore" integer NOT NULL,
       "awayScore" integer NOT NULL,
+      "pointsAwarded" integer,
       "createdAt" timestamp NOT NULL DEFAULT now(),
       "updatedAt" timestamp NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE match_results (
+      "matchId" text PRIMARY KEY,
+      "homeScore" integer NOT NULL,
+      "awayScore" integer NOT NULL,
+      "statusShort" text NOT NULL DEFAULT 'FT',
+      "syncedAt" timestamp NOT NULL DEFAULT now()
     );
 
     CREATE TABLE prediction_votes (

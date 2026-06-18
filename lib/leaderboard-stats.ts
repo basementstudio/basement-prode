@@ -1,6 +1,5 @@
 import { resolveDisplayName } from '@/lib/display-name'
 import { isProfileComplete } from '@/lib/profile'
-import { calcPoints } from '@/lib/scoring'
 
 export type LeaderboardPlayer = {
   id: string
@@ -22,14 +21,19 @@ export type WorstBoardPlayer = LeaderboardPlayer & {
 }
 
 type UserRow = { id: string; name: string; email: string }
-type PredRow = { userId: string; matchId: string; homeScore: number; awayScore: number }
+type PredRow = {
+  userId: string
+  matchId: string
+  homeScore: number
+  awayScore: number
+  pointsAwarded: number | null
+}
 type ProfileRow = {
   userId: string
   displayName: string | null
   avatarUrl: string | null
   burnedAt: Date | null
 }
-type PlayedMatch = { id: string; result: { home: number; away: number } }
 
 export function isLeaderboardEligible(
   profile: ProfileRow | undefined,
@@ -43,7 +47,6 @@ export function buildLeaderboardPlayers(
   allUsers: UserRow[],
   allPreds: PredRow[],
   allProfiles: ProfileRow[],
-  playedMatches: PlayedMatch[],
   burnSummary: {
     burnVoteCountByUserId: Record<string, number>
     viewerBurnVotedUserIds: Set<string>
@@ -63,20 +66,13 @@ export function buildLeaderboardPlayers(
 
   for (const pred of allPreds) {
     predictionCounts[pred.userId] = (predictionCounts[pred.userId] || 0) + 1
-  }
 
-  for (const match of playedMatches) {
-    const result = match.result
-    for (const pred of allPreds.filter(p => p.matchId === match.id)) {
-      const points = calcPoints(
-        { home: pred.homeScore, away: pred.awayScore },
-        result,
-      )
-      scores[pred.userId] = (scores[pred.userId] || 0) + points
-      playedCounts[pred.userId] = (playedCounts[pred.userId] || 0) + 1
-      if (points > 0) {
-        hitCounts[pred.userId] = (hitCounts[pred.userId] || 0) + 1
-      }
+    if (pred.pointsAwarded === null) continue
+
+    scores[pred.userId] = (scores[pred.userId] || 0) + pred.pointsAwarded
+    playedCounts[pred.userId] = (playedCounts[pred.userId] || 0) + 1
+    if (pred.pointsAwarded > 0) {
+      hitCounts[pred.userId] = (hitCounts[pred.userId] || 0) + 1
     }
   }
 

@@ -133,13 +133,14 @@ export type { RevealedMatchPrediction } from '@/lib/match-predictions'
 export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
   const viewerUserId = await getUserId()
 
-  const [allPreds, allProfiles, allBurnVotes, allMatches] = await Promise.all([
+  const [allPreds, allProfiles, allBurnVotes] = await Promise.all([
     db
       .select({
         userId: predictions.userId,
         matchId: predictions.matchId,
         homeScore: predictions.homeScore,
         awayScore: predictions.awayScore,
+        pointsAwarded: predictions.pointsAwarded,
       })
       .from(predictions),
     db
@@ -156,7 +157,6 @@ export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
         voterId: accountBurnVotes.voterId,
       })
       .from(accountBurnVotes),
-    getGroupStageMatches(),
   ])
 
   const eligibleUserIds = new Set(allPreds.map(p => p.userId))
@@ -178,17 +178,12 @@ export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
           .from(user)
           .where(inArray(user.id, [...eligibleUserIds]))
 
-  const playedMatches = allMatches
-    .filter(m => m.result != null)
-    .map(m => ({ id: m.id, result: m.result! }))
-
   const burnSummary = summarizeAccountBurnVotes(allBurnVotes, viewerUserId)
 
   return buildLeaderboardPlayers(
     allUsers,
     allPreds,
     allProfiles,
-    playedMatches,
     burnSummary,
   )
 }
@@ -460,7 +455,8 @@ export async function getMyScoredPredictions(): Promise<{
     if (!match?.result) continue
 
     const prediction = { home: row.homeScore, away: row.awayScore }
-    const points = calcPoints(prediction, match.result)
+    const points =
+      row.pointsAwarded ?? calcPoints(prediction, match.result)
     const outcome: ScoredPrediction['outcome'] =
       points === 6 ? 'exact' : points === 3 ? 'winner' : 'miss'
 

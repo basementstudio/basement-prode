@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "db:reset": "bun scripts/reset-db.ts",
+    "db:migrate": "bun scripts/migrate-match-results.ts",
+    "db:sync-results": "bun scripts/sync-match-results.ts",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down"
   },

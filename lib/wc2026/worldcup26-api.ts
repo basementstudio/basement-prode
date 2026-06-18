@@ -101,6 +101,33 @@ export async function fetchWorldCup26Games(
   return data.games.filter(g => g.type === 'group')
 }
 
+const MAX_FETCH_ATTEMPTS = 4
+const FETCH_RETRY_MS = 1500
+
+/** Fetch sin opciones de Next.js — para cron/scripts donde la API puede fallar intermitente. */
+export async function fetchWorldCup26GamesPlain(
+  baseUrl = process.env.WC2026_API_BASE?.trim() || DEFAULT_BASE,
+): Promise<WorldCup26Game[]> {
+  const url = `${baseUrl.replace(/\/$/, '')}/get/games`
+  let lastError: unknown
+
+  for (let attempt = 0; attempt < MAX_FETCH_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { Accept: 'application/json' } })
+      if (!res.ok) throw new Error(`worldcup26.ir HTTP ${res.status}`)
+      const data = (await res.json()) as WorldCup26GamesResponse
+      return data.games.filter(g => g.type === 'group')
+    } catch (error) {
+      lastError = error
+      if (attempt < MAX_FETCH_ATTEMPTS - 1) {
+        await new Promise(resolve => setTimeout(resolve, FETCH_RETRY_MS))
+      }
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('worldcup26.ir fetch failed')
+}
+
 /** Aplica marcadores y estado de worldcup26.ir sobre el calendario estático (conserva ids GAM1). */
 export function enrichMatchesFromWorldCup26(
   matches: Match[],

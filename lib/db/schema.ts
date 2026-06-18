@@ -55,8 +55,18 @@ export const predictions = pgTable('predictions', {
   matchId: text('matchId').notNull(),
   homeScore: integer('homeScore').notNull(),
   awayScore: integer('awayScore').notNull(),
+  /** null = partido no finalizado o aún no puntuado; 0/3/6 = puntos otorgados (inmutable). */
+  pointsAwarded: integer('pointsAwarded'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+})
+
+export const matchResults = pgTable('match_results', {
+  matchId: text('matchId').primaryKey(),
+  homeScore: integer('homeScore').notNull(),
+  awayScore: integer('awayScore').notNull(),
+  statusShort: text('statusShort').notNull().default('FT'),
+  syncedAt: timestamp('syncedAt').notNull().defaultNow(),
 })
 
 export const userProfiles = pgTable('user_profiles', {

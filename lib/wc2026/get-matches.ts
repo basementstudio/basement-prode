@@ -2,6 +2,10 @@ import { unstable_cache } from 'next/cache'
 import type { Match } from '@/lib/wc2026/types'
 import { WC2026_MATCH_CACHE_SECONDS, WC2026_MATCH_CACHE_TAG } from '@/lib/wc2026/cache'
 import { mergeKnownResults } from '@/lib/wc2026/known-results'
+import {
+  getStoredMatchResults,
+  mergeStoredResultsIntoMatches,
+} from '@/lib/match-results/sync'
 import { STATIC_GROUP_MATCHES } from '@/lib/wc2026/static-matches'
 import {
   countEnrichedMatches,
@@ -48,13 +52,14 @@ async function loadGroupStageMatches(): Promise<GroupStageData> {
 
 export const getGroupStageData = unstable_cache(
   loadGroupStageMatches,
-  ['wc2026-group-stage-v7', String(WC2026_MATCH_CACHE_SECONDS)],
+  ['wc2026-group-stage-v8', String(WC2026_MATCH_CACHE_SECONDS)],
   { revalidate: WC2026_MATCH_CACHE_SECONDS, tags: [WC2026_MATCH_CACHE_TAG] },
 )
 
 export async function getGroupStageMatches(): Promise<Match[]> {
   const data = await getGroupStageData()
-  return data.matches
+  const stored = await getStoredMatchResults()
+  return mergeStoredResultsIntoMatches(data.matches, stored)
 }
 
 export async function getMatchByIdAsync(id: string): Promise<Match | undefined> {
