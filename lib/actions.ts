@@ -8,7 +8,15 @@ import { ACCOUNT_BURN_VOTE_THRESHOLD } from '@/lib/account-burn'
 import { summarizeAccountBurnVotes } from '@/lib/account-burn-votes'
 import { isMatchLocked, getMatchKickoffMs } from '@/lib/wc2026-data'
 import { getMatchByIdAsync, getGroupStageMatches } from '@/lib/wc2026/get-matches'
-import { buildLeaderboardPlayers, type LeaderboardPlayer } from '@/lib/leaderboard-stats'
+import {
+  buildFinishedResultsMap,
+  buildLeaderboardPlayers,
+  type LeaderboardPlayer,
+} from '@/lib/leaderboard-stats'
+import {
+  getStoredMatchResults,
+  syncMatchResultsAndScore,
+} from '@/lib/match-results/sync'
 import { buildRevealedMatchPredictions, summarizePredictionVotes, type RevealedMatchPrediction } from '@/lib/match-predictions'
 import { calcPoints } from '@/lib/scoring'
 import { isValidScore } from '@/lib/score'
@@ -133,7 +141,13 @@ export type { RevealedMatchPrediction } from '@/lib/match-predictions'
 export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
   const viewerUserId = await getUserId()
 
-  const [allPreds, allProfiles, allBurnVotes] = await Promise.all([
+  try {
+    await syncMatchResultsAndScore()
+  } catch (error) {
+    console.error('[getLeaderboard] syncMatchResultsAndScore failed', error)
+  }
+
+  const [allPreds, allProfiles, allBurnVotes, matches, storedResults] = await Promise.all([
     db
       .select({
         userId: predictions.userId,
@@ -157,7 +171,11 @@ export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
         voterId: accountBurnVotes.voterId,
       })
       .from(accountBurnVotes),
+    getGroupStageMatches(),
+    getStoredMatchResults(),
   ])
+
+  const finishedResultsByMatchId = buildFinishedResultsMap(matches, storedResults)
 
   const eligibleUserIds = new Set(allPreds.map(p => p.userId))
   for (const profile of allProfiles) {
@@ -185,6 +203,7 @@ export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
     allPreds,
     allProfiles,
     burnSummary,
+    finishedResultsByMatchId,
   )
 }
 
@@ -445,6 +464,13 @@ export async function getMyScoredPredictions(): Promise<{
   playedCount: number
 }> {
   const userId = await getUserId()
+
+  try {
+    await syncMatchResultsAndScore()
+  } catch (error) {
+    console.error('[getMyScoredPredictions] syncMatchResultsAndScore failed', error)
+  }
+
   const rows = await db.select().from(predictions).where(eq(predictions.userId, userId))
   const allMatches = await getGroupStageMatches()
 

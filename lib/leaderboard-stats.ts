@@ -1,5 +1,8 @@
 import { resolveDisplayName } from '@/lib/display-name'
 import { isProfileComplete } from '@/lib/profile'
+import type { MatchResultRow } from '@/lib/match-results/sync'
+import { calcPoints } from '@/lib/scoring'
+import type { Match } from '@/lib/wc2026/types'
 
 export type LeaderboardPlayer = {
   id: string
@@ -43,6 +46,41 @@ export function isLeaderboardEligible(
   return predictionCount > 0
 }
 
+/** Resultados finalizados: BD (match_results) + partidos enriquecidos por API. */
+export function buildFinishedResultsMap(
+  matches: Match[],
+  stored: MatchResultRow[],
+): Map<string, { home: number; away: number }> {
+  const map = new Map<string, { home: number; away: number }>()
+
+  for (const row of stored) {
+    map.set(row.matchId, { home: row.homeScore, away: row.awayScore })
+  }
+
+  for (const match of matches) {
+    if (match.result != null && !map.has(match.id)) {
+      map.set(match.id, match.result)
+    }
+  }
+
+  return map
+}
+
+function resolvePredictionPoints(
+  pred: PredRow,
+  finishedResultsByMatchId: Map<string, { home: number; away: number }>,
+): number | null {
+  if (pred.pointsAwarded !== null) return pred.pointsAwarded
+
+  const result = finishedResultsByMatchId.get(pred.matchId)
+  if (!result) return null
+
+  return calcPoints(
+    { home: pred.homeScore, away: pred.awayScore },
+    result,
+  )
+}
+
 export function buildLeaderboardPlayers(
   allUsers: UserRow[],
   allPreds: PredRow[],
@@ -51,6 +89,7 @@ export function buildLeaderboardPlayers(
     burnVoteCountByUserId: Record<string, number>
     viewerBurnVotedUserIds: Set<string>
   },
+  finishedResultsByMatchId: Map<string, { home: number; away: number }> = new Map(),
 ): LeaderboardPlayer[] {
   const scores: Record<string, number> = {}
   const hitCounts: Record<string, number> = {}
@@ -67,11 +106,12 @@ export function buildLeaderboardPlayers(
   for (const pred of allPreds) {
     predictionCounts[pred.userId] = (predictionCounts[pred.userId] || 0) + 1
 
-    if (pred.pointsAwarded === null) continue
+    const points = resolvePredictionPoints(pred, finishedResultsByMatchId)
+    if (points === null) continue
 
-    scores[pred.userId] = (scores[pred.userId] || 0) + pred.pointsAwarded
+    scores[pred.userId] = (scores[pred.userId] || 0) + points
     playedCounts[pred.userId] = (playedCounts[pred.userId] || 0) + 1
-    if (pred.pointsAwarded > 0) {
+    if (points > 0) {
       hitCounts[pred.userId] = (hitCounts[pred.userId] || 0) + 1
     }
   }
