@@ -50,6 +50,7 @@ function buildMatch(raw: RawMatch): Match {
   const { date, time } = localDateTime(raw.kickoffUtc, raw.timezone)
   return {
     id: mid(raw.group, raw.n),
+    stage: 'group',
     group: raw.group,
     date,
     time,

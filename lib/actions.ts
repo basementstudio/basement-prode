@@ -7,7 +7,7 @@ import { predictions, userProfiles, user, predictionVotes, accountBurnVotes } fr
 import { ACCOUNT_BURN_VOTE_THRESHOLD } from '@/lib/account-burn'
 import { summarizeAccountBurnVotes } from '@/lib/account-burn-votes'
 import { isMatchLocked, getMatchKickoffMs } from '@/lib/wc2026-data'
-import { getMatchByIdAsync, getGroupStageMatches } from '@/lib/wc2026/get-matches'
+import { getMatchByIdAsync, getTournamentMatches } from '@/lib/wc2026/get-matches'
 import {
   buildFinishedResultsMap,
   buildLeaderboardPlayers,
@@ -171,7 +171,7 @@ export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
         voterId: accountBurnVotes.voterId,
       })
       .from(accountBurnVotes),
-    getGroupStageMatches(),
+    getTournamentMatches(),
     getStoredMatchResults(),
   ])
 
@@ -311,7 +311,7 @@ export async function getRevealedPredictionsByMatchIds(
   if (uniqueIds.length === 0) return {}
 
   const now = new Date()
-  const allMatches = await getGroupStageMatches()
+  const allMatches = await getTournamentMatches()
   const matchMap = new Map(allMatches.map(m => [m.id, m]))
   const relevantIds = uniqueIds.filter(id => matchMap.has(id))
 
@@ -472,7 +472,7 @@ export async function getMyScoredPredictions(): Promise<{
   }
 
   const rows = await db.select().from(predictions).where(eq(predictions.userId, userId))
-  const allMatches = await getGroupStageMatches()
+  const allMatches = await getTournamentMatches()
 
   const items: ScoredPrediction[] = []
 

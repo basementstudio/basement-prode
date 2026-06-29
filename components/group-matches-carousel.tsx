@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/carousel'
 import { MatchCard } from '@/components/match-card'
 import { cn } from '@/lib/utils'
-import type { Match } from '@/lib/wc2026-data'
+import { formatRoundKeyLabel, formatRoundKeyShort, type Match } from '@/lib/wc2026-data'
 import type { RevealedMatchPrediction } from '@/lib/match-predictions'
 
 type PredMap = Record<string, { home: number; away: number }>
@@ -109,7 +109,9 @@ export function GroupMatchesCarousel({
   return (
     <div className="w-full min-w-0">
       <div className="group-carousel-header">
-        <h2 className="group-carousel-title">Group {currentGroup?.group ?? '—'}</h2>
+        <h2 className="group-carousel-title">
+          {currentGroup ? formatRoundKeyLabel(currentGroup.group) : '—'}
+        </h2>
         <span className="mono-label" style={{ color: 'var(--fg-2)', flexShrink: 0 }}>
           {currentGroupIndex + 1} / {groups.length}
         </span>
@@ -164,10 +166,10 @@ export function GroupMatchesCarousel({
               data-group-tab={index}
               className={cn('group-tab', index === currentGroupIndex && 'is-active')}
               onClick={() => scrollToGroup(index)}
-              aria-label={`Group ${group.group}`}
+              aria-label={formatRoundKeyLabel(group.group)}
               aria-current={index === currentGroupIndex ? 'true' : undefined}
             >
-              {group.group}
+              {formatRoundKeyShort(group.group)}
             </button>
           ))}
         </nav>

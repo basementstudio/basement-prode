@@ -6,8 +6,12 @@ export interface Team {
 
 export type MatchStatus = 'upcoming' | 'live' | 'finished'
 
+export type MatchStage = 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final'
+
 export interface Match {
   id: string
+  /** Fase del torneo; grupos usan stage `group`. */
+  stage: MatchStage
   group: string
   /** @deprecated Usar kickoffUtc + format-local en el cliente */
   date: string

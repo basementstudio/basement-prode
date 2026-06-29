@@ -6,8 +6,9 @@ import { calcPoints } from '@/lib/scoring'
 import { STATIC_GROUP_MATCHES } from '@/lib/wc2026/static-matches'
 import {
   enrichMatchesFromWorldCup26,
-  fetchWorldCup26GamesPlain,
+  fetchWorldCup26AllGamesPlain,
 } from '@/lib/wc2026/worldcup26-api'
+import { buildKnockoutMatchesFromGames } from '@/lib/wc2026/knockout-matches'
 
 export type MatchResultRow = {
   matchId: string
@@ -69,16 +70,19 @@ export async function syncFinishedResultsFromApi(): Promise<{
   skippedStatic: number
   apiFinishedCount: number
 }> {
-  const games = await fetchWorldCup26GamesPlain()
-  const enriched = enrichMatchesFromWorldCup26(STATIC_GROUP_MATCHES, games)
+  const games = await fetchWorldCup26AllGamesPlain()
+  const groupGames = games.filter(g => g.type === 'group')
+  const enriched = enrichMatchesFromWorldCup26(STATIC_GROUP_MATCHES, groupGames)
+  const knockouts = buildKnockoutMatchesFromGames(games)
 
   const staticWithResult = new Set(
     STATIC_GROUP_MATCHES.filter(m => m.result != null).map(m => m.id),
   )
 
-  const finishedFromApi = enriched.filter(
-    m => m.result != null && !staticWithResult.has(m.id),
-  )
+  const finishedFromApi = [
+    ...enriched.filter(m => m.result != null && !staticWithResult.has(m.id)),
+    ...knockouts.filter(m => m.result != null),
+  ]
 
   const existing = await getStoredMatchResults()
   const existingById = new Map(existing.map(row => [row.matchId, row]))

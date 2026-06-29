@@ -4,10 +4,19 @@ import { normalizeTeamCode } from '@/lib/wc2026/teams'
 
 const DEFAULT_BASE = 'https://worldcup26.ir'
 
+export const KNOCKOUT_GAME_TYPES = ['r32', 'r16', 'qf', 'sf', 'third', 'final'] as const
+export type KnockoutGameType = (typeof KNOCKOUT_GAME_TYPES)[number]
+
+export function isKnockoutGameType(type: string): type is KnockoutGameType {
+  return (KNOCKOUT_GAME_TYPES as readonly string[]).includes(type)
+}
+
 export interface WorldCup26Game {
   id: string
-  home_team_name_en: string
-  away_team_name_en: string
+  home_team_name_en?: string
+  away_team_name_en?: string
+  home_team_label?: string
+  away_team_label?: string
   home_score: string | number
   away_score: string | number
   group: string
@@ -44,7 +53,7 @@ function teamsLookupKey(homeCode: string, awayCode: string): string {
   return `${homeCode}:${awayCode}`
 }
 
-function mapGameStatus(game: WorldCup26Game): {
+export function mapGameStatus(game: WorldCup26Game): {
   statusShort: string
   elapsed?: number | null
   result?: { home: number; away: number }
@@ -80,17 +89,14 @@ function mapGameStatus(game: WorldCup26Game): {
   }
 }
 
-export async function fetchWorldCup26Games(
+export async function fetchWorldCup26GamesRaw(
   baseUrl = process.env.WC2026_API_BASE?.trim() || DEFAULT_BASE,
+  init?: RequestInit,
 ): Promise<WorldCup26Game[]> {
   const url = `${baseUrl.replace(/\/$/, '')}/get/games`
-
   const res = await fetch(url, {
-    next: {
-      revalidate: WC2026_MATCH_CACHE_SECONDS,
-      tags: [WC2026_MATCH_CACHE_TAG],
-    },
-    headers: { Accept: 'application/json' },
+    ...init,
+    headers: { Accept: 'application/json', ...init?.headers },
   })
 
   if (!res.ok) {
@@ -98,7 +104,30 @@ export async function fetchWorldCup26Games(
   }
 
   const data = (await res.json()) as WorldCup26GamesResponse
-  return data.games.filter(g => g.type === 'group')
+  return data.games
+}
+
+export async function fetchWorldCup26Games(
+  baseUrl = process.env.WC2026_API_BASE?.trim() || DEFAULT_BASE,
+): Promise<WorldCup26Game[]> {
+  const games = await fetchWorldCup26GamesRaw(baseUrl, {
+    next: {
+      revalidate: WC2026_MATCH_CACHE_SECONDS,
+      tags: [WC2026_MATCH_CACHE_TAG],
+    },
+  })
+  return games.filter(g => g.type === 'group')
+}
+
+export async function fetchWorldCup26AllGames(
+  baseUrl = process.env.WC2026_API_BASE?.trim() || DEFAULT_BASE,
+): Promise<WorldCup26Game[]> {
+  return fetchWorldCup26GamesRaw(baseUrl, {
+    next: {
+      revalidate: WC2026_MATCH_CACHE_SECONDS,
+      tags: [WC2026_MATCH_CACHE_TAG],
+    },
+  })
 }
 
 const MAX_FETCH_ATTEMPTS = 4
@@ -106,6 +135,14 @@ const FETCH_RETRY_MS = 1500
 
 /** Fetch sin opciones de Next.js — para cron/scripts donde la API puede fallar intermitente. */
 export async function fetchWorldCup26GamesPlain(
+  baseUrl = process.env.WC2026_API_BASE?.trim() || DEFAULT_BASE,
+): Promise<WorldCup26Game[]> {
+  return fetchWorldCup26AllGamesPlain(baseUrl).then(games =>
+    games.filter(g => g.type === 'group'),
+  )
+}
+
+export async function fetchWorldCup26AllGamesPlain(
   baseUrl = process.env.WC2026_API_BASE?.trim() || DEFAULT_BASE,
 ): Promise<WorldCup26Game[]> {
   const url = `${baseUrl.replace(/\/$/, '')}/get/games`
@@ -116,7 +153,7 @@ export async function fetchWorldCup26GamesPlain(
       const res = await fetch(url, { headers: { Accept: 'application/json' } })
       if (!res.ok) throw new Error(`worldcup26.ir HTTP ${res.status}`)
       const data = (await res.json()) as WorldCup26GamesResponse
-      return data.games.filter(g => g.type === 'group')
+      return data.games
     } catch (error) {
       lastError = error
       if (attempt < MAX_FETCH_ATTEMPTS - 1) {
@@ -137,8 +174,8 @@ export function enrichMatchesFromWorldCup26(
   const byTeams = new Map<string, WorldCup26Game>()
 
   for (const game of games) {
-    const homeCode = normalizeTeamCode(null, game.home_team_name_en)
-    const awayCode = normalizeTeamCode(null, game.away_team_name_en)
+    const homeCode = normalizeTeamCode(null, game.home_team_name_en ?? '')
+    const awayCode = normalizeTeamCode(null, game.away_team_name_en ?? '')
     byGroupTeams.set(gameLookupKey(game.group, homeCode, awayCode), game)
     byTeams.set(teamsLookupKey(homeCode, awayCode), game)
   }
@@ -166,8 +203,8 @@ export function countEnrichedMatches(matches: Match[], games: WorldCup26Game[]):
   const teamKeys = new Set<string>()
 
   for (const game of games) {
-    const homeCode = normalizeTeamCode(null, game.home_team_name_en)
-    const awayCode = normalizeTeamCode(null, game.away_team_name_en)
+    const homeCode = normalizeTeamCode(null, game.home_team_name_en ?? '')
+    const awayCode = normalizeTeamCode(null, game.away_team_name_en ?? '')
     groupKeys.add(gameLookupKey(game.group, homeCode, awayCode))
     teamKeys.add(teamsLookupKey(homeCode, awayCode))
   }

@@ -1,10 +1,111 @@
 // Tipos y utilidades de partidos — datos vivos vía lib/wc2026/get-matches.ts
 
-export type { Team, Match, Group, MatchStatus } from '@/lib/wc2026/types'
+export type { Team, Match, Group, MatchStatus, MatchStage } from '@/lib/wc2026/types'
 export { MATCH_PLAY_MS, MATCH_POST_BUFFER_MS, MATCH_LIVE_WINDOW_MS, MATCH_DURATION_MS } from '@/lib/wc2026/types'
 
-import type { Match, MatchStatus } from '@/lib/wc2026/types'
+import type { Match, MatchStatus, MatchStage } from '@/lib/wc2026/types'
 import { MATCH_PLAY_MS } from '@/lib/wc2026/types'
+
+const STAGE_SORT_ORDER: Record<MatchStage, number> = {
+  r32: 0,
+  r16: 1,
+  qf: 2,
+  sf: 3,
+  third: 4,
+  final: 5,
+  group: 10,
+}
+
+export function formatMatchRoundLabel(match: Match): string {
+  switch (match.stage) {
+    case 'group':
+      return `GROUP ${match.group}`
+    case 'r32':
+      return 'ROUND OF 32'
+    case 'r16':
+      return 'ROUND OF 16'
+    case 'qf':
+      return 'QUARTER-FINAL'
+    case 'sf':
+      return 'SEMI-FINAL'
+    case 'third':
+      return '3RD PLACE'
+    case 'final':
+      return 'FINAL'
+    default: {
+      const _exhaustive: never = match.stage
+      return _exhaustive
+    }
+  }
+}
+
+export function matchRoundKey(match: Match): string {
+  return match.stage === 'group' ? match.group : match.stage
+}
+
+export function sortTournamentMatches(matches: Match[]): Match[] {
+  return [...matches].sort((a, b) => {
+    const stageDelta = STAGE_SORT_ORDER[a.stage] - STAGE_SORT_ORDER[b.stage]
+    if (stageDelta !== 0) return stageDelta
+    return getMatchKickoffMs(a) - getMatchKickoffMs(b)
+  })
+}
+
+/** Eliminatorias primero, luego grupos; dentro de cada fase por horario. */
+export function compareMatchesForPicks(a: Match, b: Match, now: Date = new Date()): number {
+  const stageDelta = STAGE_SORT_ORDER[a.stage] - STAGE_SORT_ORDER[b.stage]
+  if (stageDelta !== 0) return stageDelta
+  return compareMatchesBySchedule(a, b, now)
+}
+
+export function formatRoundKeyLabel(roundKey: string): string {
+  switch (roundKey) {
+    case 'r32':
+      return 'Round of 32'
+    case 'r16':
+      return 'Round of 16'
+    case 'qf':
+      return 'Quarter-finals'
+    case 'sf':
+      return 'Semi-finals'
+    case 'third':
+      return '3rd place'
+    case 'final':
+      return 'Final'
+    default:
+      return `Group ${roundKey}`
+  }
+}
+
+export function formatRoundKeyShort(roundKey: string): string {
+  switch (roundKey) {
+    case 'r32':
+      return 'R32'
+    case 'r16':
+      return 'R16'
+    case 'qf':
+      return 'QF'
+    case 'sf':
+      return 'SF'
+    case 'third':
+      return '3RD'
+    case 'final':
+      return 'FINAL'
+    default:
+      return roundKey
+  }
+}
+
+export function compareRoundKeys(a: string, b: string): number {
+  const order = (key: string): number => {
+    if (key in STAGE_SORT_ORDER) return STAGE_SORT_ORDER[key as MatchStage]
+    return STAGE_SORT_ORDER.group
+  }
+
+  const stageDelta = order(a) - order(b)
+  if (stageDelta !== 0) return stageDelta
+  return a.localeCompare(b)
+}
 
 export { STATIC_GROUP_MATCHES as ALL_MATCHES } from '@/lib/wc2026/static-matches'
 export { TEAMS } from '@/lib/wc2026/teams'

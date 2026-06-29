@@ -5,6 +5,7 @@ import {
   getMatchDisplayScore,
   getMatchStatus,
   isMatchLocked,
+  formatMatchRoundLabel,
   type Match,
   type MatchStatus,
 } from '@/lib/wc2026-data'
@@ -283,7 +284,7 @@ export function MatchCard({
         }}
       >
         <div className="match-card-meta">
-          <span>GROUP {match.group}</span>
+          <span>{formatMatchRoundLabel(match)}</span>
           <span className="match-card-meta-sep">·</span>
           <span>{dateLabel}</span>
           <span className="match-card-meta-sep">·</span>

@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import {
   getMatchStatus,
   isMatchLocked,
-  sortMatchesBySchedule,
+  compareMatchesForPicks,
+  compareRoundKeys,
+  matchRoundKey,
   type Match,
 } from '@/lib/wc2026-data'
-import type { MatchDataSource } from '@/lib/wc2026/get-matches'
+import type { TournamentData } from '@/lib/wc2026/get-matches'
 import { formatTimezoneLabel, getUserTimezone } from '@/lib/wc2026/format-local'
 import { savePrediction } from '@/lib/actions'
 import type { RevealedMatchPrediction } from '@/lib/match-predictions'
@@ -24,7 +26,7 @@ type PredMap = Record<string, { home: number; away: number }>
 interface Props {
   initialPredictions: PredMap
   matches: Match[]
-  dataSource: MatchDataSource
+  dataSource: TournamentData['source']
   communityPicksByMatch: Record<string, RevealedMatchPrediction[]>
 }
 
@@ -85,7 +87,7 @@ export function PronosticosClient({
   }, [router])
 
   const sortedMatches = useMemo(
-    () => sortMatchesBySchedule(matches, now),
+    () => [...matches].sort((a, b) => compareMatchesForPicks(a, b, now)),
     [matches, now],
   )
 
@@ -94,19 +96,30 @@ export function PronosticosClient({
     [sortedMatches, now],
   )
 
+  const upcomingKnockouts = useMemo(
+    () => upcoming.filter(m => m.stage !== 'group'),
+    [upcoming],
+  )
+
+  const isKnockoutPhase = upcomingKnockouts.length > 0
+
   const pendingMatches = useMemo(
-    () => upcoming.filter(m => !predictions[m.id]),
-    [upcoming, predictions],
+    () =>
+      [...upcoming.filter(m => !predictions[m.id])].sort((a, b) =>
+        compareMatchesForPicks(a, b, now),
+      ),
+    [upcoming, predictions, now],
   )
 
   const groupsUpcoming = useMemo(() => {
     const groups: { group: string; matches: Match[] }[] = []
     for (const match of upcoming) {
-      const existing = groups.find(g => g.group === match.group)
+      const roundKey = matchRoundKey(match)
+      const existing = groups.find(g => g.group === roundKey)
       if (existing) existing.matches.push(match)
-      else groups.push({ group: match.group, matches: [match] })
+      else groups.push({ group: roundKey, matches: [match] })
     }
-    return groups.sort((a, b) => a.group.localeCompare(b.group))
+    return groups.sort((a, b) => compareRoundKeys(a.group, b.group))
   }, [upcoming])
 
   groupsUpcomingRef.current = groupsUpcoming
@@ -227,7 +240,7 @@ export function PronosticosClient({
 
   const viewOptions: { key: ViewMode; label: string; count: number }[] = [
     { key: 'todos', label: 'All', count: pendingMatches.length },
-    { key: 'por-grupo', label: 'By group', count: groupsUpcoming.length },
+    { key: 'por-grupo', label: isKnockoutPhase ? 'By round' : 'By group', count: groupsUpcoming.length },
   ]
 
   return (
@@ -237,19 +250,21 @@ export function PronosticosClient({
           <div className="eyebrow" style={{ marginBottom: '8px' }}>
             <span className="num">01</span>
             <span className="sep"> — </span>
-            GROUP STAGE
+            {isKnockoutPhase ? 'KNOCKOUT STAGE' : 'GROUP STAGE'}
             <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
-            <span>{matches.length} MATCHES</span>
+            <span>{pendingMatches.length} LEFT TO PICK</span>
             <span style={{ color: 'var(--fg-4)', margin: '0 8px' }}>·</span>
             <span style={{ color: dataSource === 'worldcup26' ? 'var(--color-contrast)' : 'var(--fg-3)' }}>
               {dataSource === 'worldcup26' ? 'LIVE DATA' : 'LOCAL DATA'}
             </span>
           </div>
           <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px' }}>
-            Enter your picks.
+            {isKnockoutPhase ? 'Knockout picks first.' : 'Enter your picks.'}
           </h1>
           <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5' }}>
-            Home → away → flip Save to lock in your pick and jump to the next match. In By group, the last match in a group moves you to the next one. Times in {tzLabel}.
+            {isKnockoutPhase
+              ? `Round of 32 and beyond are listed first. Home → away → flip Save to lock in your pick. Times in ${tzLabel}.`
+              : `Home → away → flip Save to lock in your pick and jump to the next match. In By group, the last match in a group moves you to the next one. Times in ${tzLabel}.`}
           </p>
         </div>
         <div className="page-shell-stat">
