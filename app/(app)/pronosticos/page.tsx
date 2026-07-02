@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import { getPredictions, getRevealedPredictionsByMatchIds } from '@/lib/actions'
 import { PronosticosClient } from '@/components/pronosticos-client'
 import { getGroupStageData } from '@/lib/wc2026/get-matches'
 import { isMatchLocked } from '@/lib/wc2026-data'
+import { PageLoadingShell } from '@/components/page-loading-shell'
 
-export default async function PronosticosPage() {
+async function PronosticosContent() {
   const [predictions, { matches, source }] = await Promise.all([
     getPredictions(),
     getGroupStageData(),
@@ -18,5 +20,13 @@ export default async function PronosticosPage() {
       dataSource={source}
       communityPicksByMatch={communityPicksByMatch}
     />
+  )
+}
+
+export default function PronosticosPage() {
+  return (
+    <Suspense fallback={<PageLoadingShell />}>
+      <PronosticosContent />
+    </Suspense>
   )
 }

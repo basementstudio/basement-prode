@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { getMyScoredPredictions } from '@/lib/actions'
 import { AciertosClient } from '@/components/aciertos-client'
+import { PageLoadingShell } from '@/components/page-loading-shell'
 
-export default async function AciertosPage() {
+async function AciertosContent() {
   const data = await getMyScoredPredictions()
 
   return (
@@ -14,5 +16,13 @@ export default async function AciertosPage() {
       playedCount={data.playedCount}
       totalPicks={data.totalPicks}
     />
+  )
+}
+
+export default function AciertosPage() {
+  return (
+    <Suspense fallback={<PageLoadingShell />}>
+      <AciertosContent />
+    </Suspense>
   )
 }

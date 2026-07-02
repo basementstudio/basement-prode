@@ -4,8 +4,6 @@ import { getMyProfile, getProfileStatus } from '@/lib/actions'
 import { Sysbar } from '@/components/sysbar'
 import { SiteHeader } from '@/components/site-header'
 
-export const instant = false
-
 async function AppChrome({ children }: { children: React.ReactNode }) {
   const status = await getProfileStatus()
   if (!status.authenticated) redirect('/login')

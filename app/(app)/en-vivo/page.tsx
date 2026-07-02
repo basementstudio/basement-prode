@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import { getPredictions, getRevealedPredictionsByMatchIds } from '@/lib/actions'
 import { MatchesStatusClient } from '@/components/matches-status-client'
 import { getGroupStageData } from '@/lib/wc2026/get-matches'
 import { getMatchStatus } from '@/lib/wc2026-data'
+import { PageLoadingShell } from '@/components/page-loading-shell'
 
-export default async function EnVivoPage() {
+async function EnVivoContent() {
   const [predictions, { matches, source }] = await Promise.all([
     getPredictions(),
     getGroupStageData(),
@@ -21,5 +23,13 @@ export default async function EnVivoPage() {
       filter="live"
       communityPicksByMatch={communityPicksByMatch}
     />
+  )
+}
+
+export default function EnVivoPage() {
+  return (
+    <Suspense fallback={<PageLoadingShell />}>
+      <EnVivoContent />
+    </Suspense>
   )
 }

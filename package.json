@@ -27,7 +27,7 @@
     "embla-carousel-wheel-gestures": "^8.1.0",
     "lucide-react": "^1.16.0",
     "nanoid": "^5.1.11",
-    "next": "16.2.6",
+    "next": "16.3.0-preview.5",
     "pg": "^8.21.0",
     "react": "^19",
     "react-dom": "^19",
