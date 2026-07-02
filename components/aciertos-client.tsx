@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   formatKickoffDate,
@@ -9,7 +10,15 @@ import {
 } from '@/lib/wc2026/format-local'
 import { scoreLabel } from '@/lib/scoring'
 import type { ScoredPrediction } from '@/lib/actions'
+import {
+  formatMatchStageLabel,
+  matchesStageFilter,
+  matchesTeamSearch,
+  PREDICTION_STAGE_FILTERS,
+  type PredictionStageFilter,
+} from '@/lib/my-predictions'
 import { TeamFlag } from '@/components/team-flag'
+import { cn } from '@/lib/utils'
 
 interface Props {
   totalPoints: number
@@ -17,26 +26,40 @@ interface Props {
   winnerCount: number
   missCount: number
   playedCount: number
+  totalPicks: number
   items: ScoredPrediction[]
 }
 
+function formatPickedAt(iso: string, userTz: string): string {
+  return new Date(iso).toLocaleString('en-US', {
+    timeZone: userTz,
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 function ResultRow({ item, userTz }: { item: ScoredPrediction; userTz: string }) {
-  const { match, prediction, result, points, outcome } = item
+  const { match, prediction, result, points, outcome, pickedAt } = item
   const dateLabel = formatKickoffDate(match.kickoffUtc, userTz)
   const dayLabel = formatKickoffDay(match.kickoffUtc, userTz)
   const timeLabel = formatKickoffTime(match.kickoffUtc, userTz)
+  const isPending = outcome === 'pending'
 
   return (
     <div
-      className={`aciertos-row aciertos-row--${outcome}`}
+      className={cn('aciertos-row', !isPending && `aciertos-row--${outcome}`)}
       style={{ marginBottom: '-1px' }}
     >
       <div className="aciertos-row-meta mono-label">
-        <span>GROUP {match.group}</span>
+        <span>{formatMatchStageLabel(match)}</span>
         <span style={{ color: 'var(--fg-4)' }}>·</span>
         <span>{dateLabel}</span>
         <span style={{ color: 'var(--fg-4)' }}>·</span>
         <span>{dayLabel} {timeLabel}</span>
+        <span style={{ color: 'var(--fg-4)' }}>·</span>
+        <span>PICK {formatPickedAt(pickedAt, userTz)}</span>
       </div>
 
       <div className="aciertos-row-body">
@@ -50,13 +73,24 @@ function ResultRow({ item, userTz }: { item: ScoredPrediction; userTz: string })
             <span className="mono-label aciertos-score-label">Your pick</span>
             <span className="aciertos-score-value">{prediction.home}:{prediction.away}</span>
           </div>
-          <div className="aciertos-score-block aciertos-score-block--result">
-            <span className="mono-label aciertos-score-label">Result</span>
-            <span className="aciertos-score-value">{result.home}:{result.away}</span>
-          </div>
-          <span className={`badge ${points === 6 ? 'exact' : points === 3 ? 'winner' : 'pts'}`}>
-            {scoreLabel(points)}
-          </span>
+          {result ? (
+            <div className="aciertos-score-block aciertos-score-block--result">
+              <span className="mono-label aciertos-score-label">Result</span>
+              <span className="aciertos-score-value">{result.home}:{result.away}</span>
+            </div>
+          ) : (
+            <div className="aciertos-score-block aciertos-score-block--result">
+              <span className="mono-label aciertos-score-label">Status</span>
+              <span className="aciertos-score-value">PENDING</span>
+            </div>
+          )}
+          {points != null ? (
+            <span className={`badge ${points === 6 ? 'exact' : points === 3 ? 'winner' : 'pts'}`}>
+              {scoreLabel(points)}
+            </span>
+          ) : (
+            <span className="badge pts">AWAITING</span>
+          )}
         </div>
 
         <div className="aciertos-team aciertos-team--away">
@@ -74,29 +108,75 @@ export function AciertosClient({
   winnerCount,
   missCount,
   playedCount,
+  totalPicks,
   items,
 }: Props) {
   const userTz = getUserTimezone()
   const hits = exactCount + winnerCount
+  const [stageFilter, setStageFilter] = useState<PredictionStageFilter>('all')
+  const [search, setSearch] = useState('')
+
+  const filteredItems = useMemo(() => {
+    const query = search.trim()
+    return items.filter(
+      item =>
+        matchesStageFilter(item.match, stageFilter) &&
+        matchesTeamSearch(item.match, query),
+    )
+  }, [items, search, stageFilter])
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px 80px' }}>
       <div className="eyebrow" style={{ marginBottom: '8px' }}>
         <span className="num">02</span>
         <span className="sep"> — </span>
-        YOUR RESULTS
+        YOUR PICKS
       </div>
       <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px' }}>
         Hits and points.
       </h1>
-      <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5', marginBottom: '32px' }}>
-        Played matches with official results. 6 pts for exact score (including 0-0); 3 for correct winner or draw.
+      <p style={{ color: 'var(--fg-3)', fontSize: '15px', maxWidth: '520px', lineHeight: '1.5', marginBottom: '24px' }}>
+        All your picks, newest first. Filter by stage or search teams (e.g. &quot;arg vs mex&quot;).
       </p>
+
+      <div className="aciertos-toolbar">
+        <label className="aciertos-search mono-label">
+          <span className="sr-only">Search teams</span>
+          <input
+            type="search"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Search: arg vs mex, germany..."
+            className="aciertos-search-input"
+          />
+        </label>
+        <div className="aciertos-stage-filters" role="tablist" aria-label="Filter by stage">
+          {PREDICTION_STAGE_FILTERS.map(option => {
+            const active = stageFilter === option.id
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={cn('aciertos-stage-btn', active && 'is-active')}
+                onClick={() => setStageFilter(option.id)}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       <div className="aciertos-stats">
         <div className="aciertos-stat aciertos-stat--primary">
           <span className="aciertos-stat-value">{totalPoints}</span>
           <span className="mono-label aciertos-stat-label">TOTAL POINTS</span>
+        </div>
+        <div className="aciertos-stat">
+          <span className="aciertos-stat-value">{totalPicks}</span>
+          <span className="mono-label aciertos-stat-label">PICKS</span>
         </div>
         <div className="aciertos-stat">
           <span className="aciertos-stat-value">{hits}</span>
@@ -116,18 +196,24 @@ export function AciertosClient({
         </div>
       </div>
 
-      {playedCount === 0 ? (
+      {totalPicks === 0 ? (
         <div style={{ border: '1px solid var(--fg-4)', padding: '48px 24px', textAlign: 'center' }}>
           <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
-            No scored matches yet.
+            No picks yet.
           </span>
           <div style={{ marginTop: '16px' }}>
             <Link href="/pronosticos" className="btn">GO TO PICKS</Link>
           </div>
         </div>
+      ) : filteredItems.length === 0 ? (
+        <div style={{ border: '1px solid var(--fg-4)', padding: '48px 24px', textAlign: 'center' }}>
+          <span className="mono-label" style={{ color: 'var(--fg-3)' }}>
+            No picks match this filter.
+          </span>
+        </div>
       ) : (
         <div style={{ border: '1px solid var(--fg-4)' }}>
-          {items.map(item => (
+          {filteredItems.map(item => (
             <ResultRow key={item.match.id} item={item} userTz={userTz} />
           ))}
         </div>

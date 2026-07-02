@@ -1,9 +1,9 @@
 import type { NextRequest } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { syncMatchResultsAndScore } from '@/lib/match-results/sync'
+import { revalidateDbAggregates } from '@/lib/revalidate-app'
 import { WC2026_MATCH_CACHE_TAG } from '@/lib/wc2026/cache'
 
-export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 export async function GET(request: NextRequest) {
@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const report = await syncMatchResultsAndScore()
     revalidateTag(WC2026_MATCH_CACHE_TAG, 'max')
+    revalidateDbAggregates()
 
     return Response.json({ ok: true, ...report })
   } catch (error) {

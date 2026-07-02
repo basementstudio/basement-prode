@@ -123,6 +123,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
       <div className="relative flex h-[52px] items-center gap-3 px-4 md:px-6">
         <Link
           href="/pronosticos"
+          prefetch={false}
           className="mr-auto flex min-w-0 shrink flex-col gap-0.5 no-underline"
           aria-label="Go to picks"
         >
@@ -138,7 +139,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
           {NAV_ITEMS.map(item => {
             const active = item.isActive(pathname)
             return (
-              <Link key={item.href} href={item.href} className={navLinkClass(active)}>
+              <Link key={item.href} href={item.href} prefetch={false} className={navLinkClass(active)}>
                 {item.label}
                 {active && (
                   <span
@@ -155,6 +156,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
           <div className="hidden items-center lg:flex">
             <Link
               href="/tabla"
+              prefetch={false}
               className="flex h-9 items-center gap-2 border border-border px-3 no-underline transition-colors duration-200 ease-base hover:border-fg-2 hover:bg-gray-800"
               aria-label="Go to your profile"
             >
@@ -177,6 +179,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
         <div className="flex shrink-0 items-center gap-2 lg:hidden">
           <Link
             href="/tabla"
+            prefetch={false}
             className={cn(
               'flex h-9 items-center border border-border px-3 font-mono text-[10px] uppercase tracking-wide no-underline transition-colors duration-200 ease-base hover:border-fg-2 hover:bg-gray-800 sm:text-[11px]',
               pathname === '/tabla' ? 'border-fg-2 bg-gray-800 text-fg-1' : 'text-fg-2',
@@ -217,6 +220,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   className={navLinkClass(active, true)}
                   onClick={() => setMenuOpen(false)}
                 >
@@ -235,6 +239,7 @@ export function SiteHeader({ avatarUrl, displayName }: SiteHeaderProps) {
               <div className="flex items-stretch border-t border-border">
                 <Link
                   href="/tabla"
+                  prefetch={false}
                   className="flex min-h-[44px] flex-1 items-center gap-2 border-r border-border px-4 no-underline transition-colors duration-200 ease-base hover:bg-gray-800"
                   onClick={() => setMenuOpen(false)}
                 >

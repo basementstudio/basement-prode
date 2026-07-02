@@ -59,9 +59,10 @@ export function MatchesStatusClient({
   }, [])
 
   useEffect(() => {
-    const refresh = setInterval(() => router.refresh(), 30_000)
+    if (filter !== 'live') return
+    const refresh = setInterval(() => router.refresh(), 5 * 60 * 1000)
     return () => clearInterval(refresh)
-  }, [router])
+  }, [router, filter])
 
   const filteredMatches = useMemo(() => {
     const sorted = sortMatchesBySchedule(matches, now)

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   getMatchStatus,
   isMatchLocked,
@@ -54,7 +53,6 @@ export function PronosticosClient({
   dataSource,
   communityPicksByMatch,
 }: Props) {
-  const router = useRouter()
   const [predictions, setPredictions] = useState<PredMap>(initialPredictions)
   const [viewMode, setViewMode] = useState<ViewMode>('todos')
   const [now, setNow] = useState(() => new Date())
@@ -80,11 +78,6 @@ export function PronosticosClient({
     const interval = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(interval)
   }, [])
-
-  useEffect(() => {
-    const refresh = setInterval(() => router.refresh(), 60_000)
-    return () => clearInterval(refresh)
-  }, [router])
 
   const sortedMatches = useMemo(
     () => [...matches].sort((a, b) => compareMatchesForPicks(a, b, now)),

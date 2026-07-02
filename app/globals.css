@@ -1833,6 +1833,72 @@
 
 /* ---- Aciertos ---- */
 
+@utility aciertos-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@utility aciertos-search {
+  display: block;
+}
+
+@utility aciertos-search-input {
+  width: 100%;
+  border: 1px solid var(--fg-4);
+  background: var(--gray-900);
+  color: var(--fg-1);
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &::placeholder {
+    color: var(--fg-3);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--fg-2);
+  }
+}
+
+@utility aciertos-stage-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid var(--fg-4);
+}
+
+@utility aciertos-stage-btn {
+  border: 0;
+  border-right: 1px solid var(--fg-4);
+  background: transparent;
+  color: var(--fg-3);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  &.is-active {
+    color: var(--fg-1);
+    background: var(--gray-800);
+  }
+
+  &:hover {
+    color: var(--fg-1);
+    background: var(--gray-800);
+  }
+}
+
 @utility aciertos-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

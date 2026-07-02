@@ -6,22 +6,19 @@ import { db } from '@/lib/db'
 import { predictions, userProfiles, user, predictionVotes, accountBurnVotes } from '@/lib/db/schema'
 import { ACCOUNT_BURN_VOTE_THRESHOLD } from '@/lib/account-burn'
 import { summarizeAccountBurnVotes } from '@/lib/account-burn-votes'
-import { isMatchLocked, getMatchKickoffMs } from '@/lib/wc2026-data'
+import { getLeaderboardRawData } from '@/lib/leaderboard-cache'
+import { isMatchLocked } from '@/lib/wc2026-data'
 import { getMatchByIdAsync, getTournamentMatches } from '@/lib/wc2026/get-matches'
 import {
-  buildFinishedResultsMap,
   buildLeaderboardPlayers,
   type LeaderboardPlayer,
 } from '@/lib/leaderboard-stats'
-import {
-  getStoredMatchResults,
-  syncMatchResultsAndScore,
-} from '@/lib/match-results/sync'
+import { revalidateDbAggregates, revalidateUserProfileCache } from '@/lib/revalidate-app'
 import { buildRevealedMatchPredictions, summarizePredictionVotes, type RevealedMatchPrediction } from '@/lib/match-predictions'
 import { calcPoints } from '@/lib/scoring'
 import { isValidScore } from '@/lib/score'
 import type { Match } from '@/lib/wc2026/types'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
 import { isProfileComplete, normalizeDisplayName } from '@/lib/profile'
@@ -122,6 +119,7 @@ export async function savePrediction(
     revalidatePath('/concluidos')
     revalidatePath('/tabla')
     revalidatePath('/aciertos')
+    revalidateDbAggregates()
   } catch (err) {
     console.error('[savePrediction] failed', {
       userId,
@@ -140,70 +138,15 @@ export type { RevealedMatchPrediction } from '@/lib/match-predictions'
 
 export async function getLeaderboard(): Promise<LeaderboardPlayer[]> {
   const viewerUserId = await getUserId()
-
-  try {
-    await syncMatchResultsAndScore()
-  } catch (error) {
-    console.error('[getLeaderboard] syncMatchResultsAndScore failed', error)
-  }
-
-  const [allPreds, allProfiles, allBurnVotes, matches, storedResults] = await Promise.all([
-    db
-      .select({
-        userId: predictions.userId,
-        matchId: predictions.matchId,
-        homeScore: predictions.homeScore,
-        awayScore: predictions.awayScore,
-        pointsAwarded: predictions.pointsAwarded,
-      })
-      .from(predictions),
-    db
-      .select({
-        userId: userProfiles.userId,
-        displayName: userProfiles.displayName,
-        avatarUrl: userProfiles.avatarUrl,
-        burnedAt: userProfiles.burnedAt,
-      })
-      .from(userProfiles),
-    db
-      .select({
-        targetUserId: accountBurnVotes.targetUserId,
-        voterId: accountBurnVotes.voterId,
-      })
-      .from(accountBurnVotes),
-    getTournamentMatches(),
-    getStoredMatchResults(),
-  ])
-
-  const finishedResultsByMatchId = buildFinishedResultsMap(matches, storedResults)
-
-  const eligibleUserIds = new Set(allPreds.map(p => p.userId))
-  for (const profile of allProfiles) {
-    if (isProfileComplete(profile)) {
-      eligibleUserIds.add(profile.userId)
-    }
-  }
-
-  const allUsers =
-    eligibleUserIds.size === 0
-      ? []
-      : await db
-          .select({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-          })
-          .from(user)
-          .where(inArray(user.id, [...eligibleUserIds]))
-
-  const burnSummary = summarizeAccountBurnVotes(allBurnVotes, viewerUserId)
+  const raw = await getLeaderboardRawData()
+  const burnSummary = summarizeAccountBurnVotes(raw.allBurnVotes, viewerUserId)
 
   return buildLeaderboardPlayers(
-    allUsers,
-    allPreds,
-    allProfiles,
+    raw.allUsers,
+    raw.allPreds,
+    raw.allProfiles,
     burnSummary,
-    finishedResultsByMatchId,
+    new Map(Object.entries(raw.finishedResultsByMatchId)),
   )
 }
 
@@ -295,6 +238,7 @@ export async function toggleAccountBurnVote(targetUserId: string): Promise<{
     .limit(1)
 
   revalidatePath('/tabla')
+  revalidateDbAggregates()
 
   return {
     burnVoteCount,
@@ -450,9 +394,10 @@ export async function togglePredictionDownvote(
 export type ScoredPrediction = {
   match: Match
   prediction: { home: number; away: number }
-  result: { home: number; away: number }
-  points: number
-  outcome: 'exact' | 'winner' | 'miss'
+  pickedAt: string
+  result?: { home: number; away: number }
+  points: number | null
+  outcome: 'exact' | 'winner' | 'miss' | 'pending'
 }
 
 export async function getMyScoredPredictions(): Promise<{
@@ -462,48 +407,60 @@ export async function getMyScoredPredictions(): Promise<{
   winnerCount: number
   missCount: number
   playedCount: number
+  totalPicks: number
 }> {
   const userId = await getUserId()
-
-  try {
-    await syncMatchResultsAndScore()
-  } catch (error) {
-    console.error('[getMyScoredPredictions] syncMatchResultsAndScore failed', error)
-  }
-
-  const rows = await db.select().from(predictions).where(eq(predictions.userId, userId))
+  const rows = await db
+    .select()
+    .from(predictions)
+    .where(eq(predictions.userId, userId))
+    .orderBy(desc(predictions.updatedAt))
   const allMatches = await getTournamentMatches()
 
   const items: ScoredPrediction[] = []
 
   for (const row of rows) {
     const match = allMatches.find(m => m.id === row.matchId)
-    if (!match?.result) continue
+    if (!match) continue
 
     const prediction = { home: row.homeScore, away: row.awayScore }
-    const points =
-      row.pointsAwarded ?? calcPoints(prediction, match.result)
+    const pickedAt = row.updatedAt.toISOString()
+
+    if (!match.result) {
+      items.push({
+        match,
+        prediction,
+        pickedAt,
+        points: null,
+        outcome: 'pending',
+      })
+      continue
+    }
+
+    const points = row.pointsAwarded ?? calcPoints(prediction, match.result)
     const outcome: ScoredPrediction['outcome'] =
       points === 6 ? 'exact' : points === 3 ? 'winner' : 'miss'
 
     items.push({
       match,
       prediction,
+      pickedAt,
       result: match.result,
       points,
       outcome,
     })
   }
 
-  items.sort((a, b) => getMatchKickoffMs(b.match) - getMatchKickoffMs(a.match))
+  const scored = items.filter(item => item.outcome !== 'pending')
 
   return {
     items,
-    totalPoints: items.reduce((sum, item) => sum + item.points, 0),
-    exactCount: items.filter(i => i.outcome === 'exact').length,
-    winnerCount: items.filter(i => i.outcome === 'winner').length,
-    missCount: items.filter(i => i.outcome === 'miss').length,
-    playedCount: items.length,
+    totalPoints: scored.reduce((sum, item) => sum + (item.points ?? 0), 0),
+    exactCount: scored.filter(i => i.outcome === 'exact').length,
+    winnerCount: scored.filter(i => i.outcome === 'winner').length,
+    missCount: scored.filter(i => i.outcome === 'miss').length,
+    playedCount: scored.length,
+    totalPicks: items.length,
   }
 }
 
@@ -533,4 +490,6 @@ export async function saveMyProfile(displayName: string, avatarUrl?: string) {
 
   revalidatePath('/tabla')
   revalidatePath('/pronosticos')
+  revalidateUserProfileCache()
+  revalidateDbAggregates()
 }

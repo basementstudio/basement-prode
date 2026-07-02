@@ -1,7 +1,13 @@
+import { unstable_cache } from 'next/cache'
 import { and, eq, isNull } from 'drizzle-orm'
 import type { Match } from '@/lib/wc2026/types'
 import { matchResults, predictions } from '@/lib/db/schema'
 import { db } from '@/lib/db/pool'
+import {
+  DB_READ_CACHE_SECONDS,
+  MATCH_RESULTS_CACHE_TAG,
+} from '@/lib/server-cache'
+import { WC2026_MATCH_CACHE_TAG } from '@/lib/wc2026/cache'
 import { calcPoints } from '@/lib/scoring'
 import { STATIC_GROUP_MATCHES } from '@/lib/wc2026/static-matches'
 import {
@@ -26,7 +32,7 @@ export type SyncMatchResultsReport = {
   totalStoredResults: number
 }
 
-export async function getStoredMatchResults(): Promise<MatchResultRow[]> {
+async function fetchStoredMatchResults(): Promise<MatchResultRow[]> {
   const rows = await db
     .select({
       matchId: matchResults.matchId,
@@ -38,6 +44,16 @@ export async function getStoredMatchResults(): Promise<MatchResultRow[]> {
 
   return rows
 }
+
+/** Lecturas de resultados cacheadas entre requests (cron/sync usan fetch directo). */
+export const getStoredMatchResults = unstable_cache(
+  fetchStoredMatchResults,
+  ['match-results-v1', String(DB_READ_CACHE_SECONDS)],
+  {
+    revalidate: DB_READ_CACHE_SECONDS,
+    tags: [MATCH_RESULTS_CACHE_TAG, WC2026_MATCH_CACHE_TAG],
+  },
+)
 
 export function mergeStoredResultsIntoMatches(
   matches: Match[],
@@ -84,7 +100,7 @@ export async function syncFinishedResultsFromApi(): Promise<{
     ...knockouts.filter(m => m.result != null),
   ]
 
-  const existing = await getStoredMatchResults()
+  const existing = await fetchStoredMatchResults()
   const existingById = new Map(existing.map(row => [row.matchId, row]))
 
   let newlySynced = 0
@@ -120,7 +136,7 @@ export async function syncFinishedResultsFromApi(): Promise<{
     }
   }
 
-  const synced = await getStoredMatchResults()
+  const synced = await fetchStoredMatchResults()
 
   return {
     synced,
@@ -136,7 +152,7 @@ export async function syncFinishedResultsFromApi(): Promise<{
  * Idempotente: solo actualiza filas con pointsAwarded IS NULL.
  */
 export async function scoreUnscoredPredictions(): Promise<number> {
-  const stored = await getStoredMatchResults()
+  const stored = await fetchStoredMatchResults()
   if (stored.length === 0) return 0
 
   const resultByMatchId = new Map(

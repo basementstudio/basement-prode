@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { LoginAmbience } from '@/components/login/login-ambience'
 import { getProfileStatus } from '@/lib/actions'
 import { LoginForm } from './login-form'
 
-export default async function LoginPage({
+async function LoginPageContent({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -14,7 +15,14 @@ export default async function LoginPage({
   }
 
   const status = await getProfileStatus()
+  return <LoginForm profileComplete={status.authenticated && status.complete} />
+}
 
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   return (
     <div className="relative min-h-screen flex flex-col">
       <LoginAmbience />
@@ -35,7 +43,9 @@ export default async function LoginPage({
 
       <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-16 pointer-events-none">
         <div className="pointer-events-auto w-full max-w-[440px]">
-          <LoginForm profileComplete={status.authenticated && status.complete} />
+          <Suspense fallback={<LoginForm profileComplete={false} />}>
+            <LoginPageContent searchParams={searchParams} />
+          </Suspense>
         </div>
       </main>
     </div>

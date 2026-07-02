@@ -12,6 +12,7 @@ export default async function AciertosPage() {
       winnerCount={data.winnerCount}
       missCount={data.missCount}
       playedCount={data.playedCount}
+      totalPicks={data.totalPicks}
     />
   )
 }

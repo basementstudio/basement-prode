@@ -8,7 +8,10 @@ export default async function EnVivoPage() {
     getPredictions(),
     getGroupStageData(),
   ])
-  const communityPicksByMatch = await getRevealedPredictionsByMatchIds(matches.map(m => m.id))
+  const liveMatchIds = matches
+    .filter(match => getMatchStatus(match) === 'live')
+    .map(match => match.id)
+  const communityPicksByMatch = await getRevealedPredictionsByMatchIds(liveMatchIds)
 
   return (
     <MatchesStatusClient
