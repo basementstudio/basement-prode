@@ -121,6 +121,19 @@ export function getMatchKickoffMs(match: Match): number {
   return new Date(normalized).getTime()
 }
 
+/** true solo antes del pitido y sin resultado ni estado live/finished de la API. */
+export function canPickMatch(match: Match, now: Date = new Date()): boolean {
+  const kickoff = getMatchKickoffMs(match)
+  if (!Number.isFinite(kickoff)) return false
+  if (now.getTime() >= kickoff) return false
+  if (match.result) return false
+  if (match.statusShort) {
+    if (FINISHED_STATUSES.has(match.statusShort)) return false
+    if (LIVE_STATUSES.has(match.statusShort)) return false
+  }
+  return true
+}
+
 /**
  * Estado del partido (badge / filtros).
  * Prioriza la API: FT → CONCLUIDO, 1H/HT/2H → EN VIVO.
@@ -172,7 +185,7 @@ export function getMatchDisplayScore(
 }
 
 export function isMatchLocked(match: Match, now: Date = new Date()): boolean {
-  return getMatchStatus(match, now) !== 'upcoming'
+  return !canPickMatch(match, now)
 }
 
 export function isMatchPlayed(match: Match, now: Date = new Date()): boolean {
@@ -200,6 +213,11 @@ export function compareMatchesBySchedule(a: Match, b: Match, now: Date = new Dat
 
 export function sortMatchesBySchedule(matches: Match[], now: Date = new Date()): Match[] {
   return [...matches].sort((a, b) => compareMatchesBySchedule(a, b, now))
+}
+
+/** Finalizados: del más reciente al inaugural (kickoff descendente). */
+export function sortFinishedMatchesNewestFirst(matches: Match[]): Match[] {
+  return [...matches].sort((a, b) => getMatchKickoffMs(b) - getMatchKickoffMs(a))
 }
 
 /** @deprecated Preferir formatKickoffDate desde lib/wc2026/format-local */

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   getMatchStatus,
+  sortFinishedMatchesNewestFirst,
   sortMatchesBySchedule,
   type Match,
 } from '@/lib/wc2026-data'
@@ -65,8 +66,11 @@ export function MatchesStatusClient({
   }, [router, filter])
 
   const filteredMatches = useMemo(() => {
-    const sorted = sortMatchesBySchedule(matches, now)
-    return sorted.filter(m => getMatchStatus(m, now) === filter)
+    const finished = matches.filter(m => getMatchStatus(m, now) === filter)
+    if (filter === 'finished') {
+      return sortFinishedMatchesNewestFirst(finished)
+    }
+    return sortMatchesBySchedule(finished, now)
   }, [matches, now, filter])
 
   const handleSave = useCallback(async (matchId: string, home: number, away: number) => {

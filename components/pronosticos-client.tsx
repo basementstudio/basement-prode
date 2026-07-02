@@ -2,10 +2,10 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
-  getMatchStatus,
-  isMatchLocked,
+  canPickMatch,
   compareMatchesForPicks,
   compareRoundKeys,
+  isMatchLocked,
   matchRoundKey,
   type Match,
 } from '@/lib/wc2026-data'
@@ -75,7 +75,7 @@ export function PronosticosClient({
   }, [])
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 30_000)
+    const interval = setInterval(() => setNow(new Date()), 15_000)
     return () => clearInterval(interval)
   }, [])
 
@@ -84,41 +84,41 @@ export function PronosticosClient({
     [matches, now],
   )
 
-  const upcoming = useMemo(
-    () => sortedMatches.filter(m => getMatchStatus(m, now) === 'upcoming'),
+  const pickable = useMemo(
+    () => sortedMatches.filter(m => canPickMatch(m, now)),
     [sortedMatches, now],
   )
 
   const upcomingKnockouts = useMemo(
-    () => upcoming.filter(m => m.stage !== 'group'),
-    [upcoming],
+    () => pickable.filter(m => m.stage !== 'group'),
+    [pickable],
   )
 
   const isKnockoutPhase = upcomingKnockouts.length > 0
 
   const pendingMatches = useMemo(
     () =>
-      [...upcoming.filter(m => !predictions[m.id])].sort((a, b) =>
+      [...pickable.filter(m => !predictions[m.id])].sort((a, b) =>
         compareMatchesForPicks(a, b, now),
       ),
-    [upcoming, predictions, now],
+    [pickable, predictions, now],
   )
 
   const groupsUpcoming = useMemo(() => {
     const groups: { group: string; matches: Match[] }[] = []
-    for (const match of upcoming) {
+    for (const match of pickable) {
       const roundKey = matchRoundKey(match)
       const existing = groups.find(g => g.group === roundKey)
       if (existing) existing.matches.push(match)
       else groups.push({ group: roundKey, matches: [match] })
     }
     return groups.sort((a, b) => compareRoundKeys(a.group, b.group))
-  }, [upcoming])
+  }, [pickable])
 
   groupsUpcomingRef.current = groupsUpcoming
 
-  const savedCount = upcoming.filter(m => predictions[m.id]).length
-  const progress = upcoming.length > 0 ? (savedCount / upcoming.length) * 100 : 100
+  const savedCount = pickable.filter(m => predictions[m.id]).length
+  const progress = pickable.length > 0 ? (savedCount / pickable.length) * 100 : 100
   const tzLabel = formatTimezoneLabel(userTz)
   const currentGroup = groupsUpcoming[currentGroupIndex]
 
@@ -263,7 +263,7 @@ export function PronosticosClient({
         <div className="page-shell-stat">
           <div style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1 }}>
             {savedCount}
-            <span style={{ fontSize: '16px', color: 'var(--fg-3)', fontWeight: 400 }}> / {upcoming.length}</span>
+            <span style={{ fontSize: '16px', color: 'var(--fg-3)', fontWeight: 400 }}> / {pickable.length}</span>
           </div>
           <div className="mono-label" style={{ color: 'var(--fg-3)', marginTop: '4px' }}>
             left to pick
@@ -279,7 +279,7 @@ export function PronosticosClient({
           <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
         <span className="mono-label" style={{ color: 'var(--fg-3)', flexShrink: 0 }}>
-          {savedCount} OF {upcoming.length}
+          {savedCount} OF {pickable.length}
         </span>
       </div>
 
@@ -331,7 +331,7 @@ export function PronosticosClient({
 
       {viewMode === 'por-grupo' && (
         groupsUpcoming.length === 0 ? (
-          <EmptyState message="No groups left with upcoming matches" />
+          <EmptyState message="No groups left with matches to pick" />
         ) : (
           <GroupMatchesCarousel
             groups={groupsUpcoming}

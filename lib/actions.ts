@@ -7,13 +7,13 @@ import { predictions, userProfiles, user, predictionVotes, accountBurnVotes } fr
 import { ACCOUNT_BURN_VOTE_THRESHOLD } from '@/lib/account-burn'
 import { summarizeAccountBurnVotes } from '@/lib/account-burn-votes'
 import { getLeaderboardRawData } from '@/lib/leaderboard-cache'
-import { isMatchLocked } from '@/lib/wc2026-data'
+import { canPickMatch, isMatchLocked } from '@/lib/wc2026-data'
 import { getMatchByIdAsync, getTournamentMatches } from '@/lib/wc2026/get-matches'
 import {
   buildLeaderboardPlayers,
   type LeaderboardPlayer,
 } from '@/lib/leaderboard-stats'
-import { revalidateDbAggregates, revalidateUserProfileCache } from '@/lib/revalidate-app'
+import { revalidateLeaderboardMeta, revalidateLeaderboardUsers, revalidateUserProfileCache } from '@/lib/revalidate-app'
 import { buildRevealedMatchPredictions, summarizePredictionVotes, type RevealedMatchPrediction } from '@/lib/match-predictions'
 import { calcPoints } from '@/lib/scoring'
 import { isValidScore } from '@/lib/score'
@@ -85,8 +85,8 @@ export async function savePrediction(
     if (!match) throw new Error('Match not found')
 
     const now = clientNowMs != null ? new Date(clientNowMs) : new Date()
-    if (isMatchLocked(match, now)) {
-      throw new Error('This match has started and can no longer be edited')
+    if (!canPickMatch(match, now)) {
+      throw new Error('This match has started or finished and can no longer be edited')
     }
 
     if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
@@ -119,7 +119,7 @@ export async function savePrediction(
     revalidatePath('/concluidos')
     revalidatePath('/tabla')
     revalidatePath('/aciertos')
-    revalidateDbAggregates()
+    revalidateLeaderboardUsers([userId])
   } catch (err) {
     console.error('[savePrediction] failed', {
       userId,
@@ -238,7 +238,7 @@ export async function toggleAccountBurnVote(targetUserId: string): Promise<{
     .limit(1)
 
   revalidatePath('/tabla')
-  revalidateDbAggregates()
+  revalidateLeaderboardMeta()
 
   return {
     burnVoteCount,
@@ -491,5 +491,5 @@ export async function saveMyProfile(displayName: string, avatarUrl?: string) {
   revalidatePath('/tabla')
   revalidatePath('/pronosticos')
   revalidateUserProfileCache()
-  revalidateDbAggregates()
+  revalidateLeaderboardUsers([userId])
 }

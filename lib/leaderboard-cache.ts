@@ -6,8 +6,9 @@ import { db } from '@/lib/db'
 import { accountBurnVotes, predictions, user, userProfiles } from '@/lib/db/schema'
 import { isProfileComplete } from '@/lib/profile'
 import { buildFinishedResultsMap } from '@/lib/leaderboard-stats'
-import { getStoredMatchResults } from '@/lib/match-results/sync'
-import { DB_READ_CACHE_SECONDS, LEADERBOARD_CACHE_TAG } from '@/lib/server-cache'
+import { fetchStoredMatchResults } from '@/lib/match-results/sync'
+import { getCachedUserPredictions } from '@/lib/leaderboard-predictions-cache'
+import { DB_READ_CACHE_SECONDS, LEADERBOARD_META_TAG } from '@/lib/server-cache'
 import { getTournamentData } from '@/lib/wc2026/get-matches'
 import { mergeStoredResultsIntoMatches } from '@/lib/match-results/sync'
 
@@ -37,17 +38,16 @@ export type LeaderboardRawData = {
   finishedResultsByMatchId: Record<string, { home: number; away: number }>
 }
 
-async function loadLeaderboardRawData(): Promise<LeaderboardRawData> {
-  const [allPreds, allProfiles, allBurnVotes, tournamentData, storedResults] = await Promise.all([
-    db
-      .select({
-        userId: predictions.userId,
-        matchId: predictions.matchId,
-        homeScore: predictions.homeScore,
-        awayScore: predictions.awayScore,
-        pointsAwarded: predictions.pointsAwarded,
-      })
-      .from(predictions),
+type LeaderboardMeta = {
+  allProfiles: LeaderboardRawData['allProfiles']
+  allBurnVotes: LeaderboardRawData['allBurnVotes']
+  allUsers: LeaderboardRawData['allUsers']
+  eligibleUserIds: string[]
+}
+
+async function loadLeaderboardMeta(): Promise<LeaderboardMeta> {
+  const [allPredUserIds, allProfiles, allBurnVotes] = await Promise.all([
+    db.select({ userId: predictions.userId }).from(predictions),
     db
       .select({
         userId: userProfiles.userId,
@@ -62,16 +62,9 @@ async function loadLeaderboardRawData(): Promise<LeaderboardRawData> {
         voterId: accountBurnVotes.voterId,
       })
       .from(accountBurnVotes),
-    getTournamentData(),
-    getStoredMatchResults(),
   ])
 
-  const matches = mergeStoredResultsIntoMatches(tournamentData.matches, storedResults)
-  const finishedResultsByMatchId = Object.fromEntries(
-    buildFinishedResultsMap(matches, storedResults),
-  )
-
-  const eligibleUserIds = new Set(allPreds.map(p => p.userId))
+  const eligibleUserIds = new Set(allPredUserIds.map(row => row.userId))
   for (const profile of allProfiles) {
     if (isProfileComplete(profile)) {
       eligibleUserIds.add(profile.userId)
@@ -91,19 +84,43 @@ async function loadLeaderboardRawData(): Promise<LeaderboardRawData> {
           .where(inArray(user.id, [...eligibleUserIds]))
 
   return {
-    allPreds,
     allProfiles,
     allBurnVotes,
     allUsers,
-    finishedResultsByMatchId,
+    eligibleUserIds: [...eligibleUserIds],
   }
 }
 
-export const getLeaderboardRawData = unstable_cache(
-  loadLeaderboardRawData,
-  ['leaderboard-raw-v1', String(DB_READ_CACHE_SECONDS)],
+const getLeaderboardMeta = unstable_cache(
+  loadLeaderboardMeta,
+  ['leaderboard-meta-v1', String(DB_READ_CACHE_SECONDS)],
   {
     revalidate: DB_READ_CACHE_SECONDS,
-    tags: [LEADERBOARD_CACHE_TAG],
+    tags: [LEADERBOARD_META_TAG],
   },
 )
+
+export async function getLeaderboardRawData(): Promise<LeaderboardRawData> {
+  const [meta, tournamentData, storedResults] = await Promise.all([
+    getLeaderboardMeta(),
+    getTournamentData(),
+    fetchStoredMatchResults(),
+  ])
+
+  const matches = mergeStoredResultsIntoMatches(tournamentData.matches, storedResults)
+  const finishedResultsByMatchId = Object.fromEntries(
+    buildFinishedResultsMap(matches, storedResults),
+  )
+
+  const predRows = await Promise.all(
+    meta.eligibleUserIds.map(userId => getCachedUserPredictions(userId)),
+  )
+
+  return {
+    allPreds: predRows.flat(),
+    allProfiles: meta.allProfiles,
+    allBurnVotes: meta.allBurnVotes,
+    allUsers: meta.allUsers,
+    finishedResultsByMatchId,
+  }
+}

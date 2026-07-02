@@ -1,13 +1,7 @@
-import { unstable_cache } from 'next/cache'
 import { and, eq, isNull } from 'drizzle-orm'
 import type { Match } from '@/lib/wc2026/types'
 import { matchResults, predictions } from '@/lib/db/schema'
 import { db } from '@/lib/db/pool'
-import {
-  DB_READ_CACHE_SECONDS,
-  MATCH_RESULTS_CACHE_TAG,
-} from '@/lib/server-cache'
-import { WC2026_MATCH_CACHE_TAG } from '@/lib/wc2026/cache'
 import { calcPoints } from '@/lib/scoring'
 import { STATIC_GROUP_MATCHES } from '@/lib/wc2026/static-matches'
 import {
@@ -23,6 +17,11 @@ export type MatchResultRow = {
   statusShort: string
 }
 
+export type ScoreUpdate = {
+  matchId: string
+  userId: string
+}
+
 export type SyncMatchResultsReport = {
   apiFinishedCount: number
   newlySynced: number
@@ -30,9 +29,11 @@ export type SyncMatchResultsReport = {
   skippedStatic: number
   newlyScored: number
   totalStoredResults: number
+  changedMatchIds: string[]
+  scoreUpdates: ScoreUpdate[]
 }
 
-async function fetchStoredMatchResults(): Promise<MatchResultRow[]> {
+export async function fetchStoredMatchResults(): Promise<MatchResultRow[]> {
   const rows = await db
     .select({
       matchId: matchResults.matchId,
@@ -45,15 +46,8 @@ async function fetchStoredMatchResults(): Promise<MatchResultRow[]> {
   return rows
 }
 
-/** Lecturas de resultados cacheadas entre requests (cron/sync usan fetch directo). */
-export const getStoredMatchResults = unstable_cache(
-  fetchStoredMatchResults,
-  ['match-results-v1', String(DB_READ_CACHE_SECONDS)],
-  {
-    revalidate: DB_READ_CACHE_SECONDS,
-    tags: [MATCH_RESULTS_CACHE_TAG, WC2026_MATCH_CACHE_TAG],
-  },
-)
+/** Lectura directa de resultados (tabla chica; sin caché global). */
+export const getStoredMatchResults = fetchStoredMatchResults
 
 export function mergeStoredResultsIntoMatches(
   matches: Match[],
@@ -85,6 +79,7 @@ export async function syncFinishedResultsFromApi(): Promise<{
   updated: number
   skippedStatic: number
   apiFinishedCount: number
+  changedMatchIds: string[]
 }> {
   const games = await fetchWorldCup26AllGamesPlain()
   const groupGames = games.filter(g => g.type === 'group')
@@ -105,6 +100,7 @@ export async function syncFinishedResultsFromApi(): Promise<{
 
   let newlySynced = 0
   let updated = 0
+  const changedMatchIds: string[] = []
 
   for (const match of finishedFromApi) {
     const result = match.result!
@@ -119,6 +115,7 @@ export async function syncFinishedResultsFromApi(): Promise<{
         syncedAt: new Date(),
       })
       newlySynced++
+      changedMatchIds.push(match.id)
       continue
     }
 
@@ -133,6 +130,7 @@ export async function syncFinishedResultsFromApi(): Promise<{
         })
         .where(eq(matchResults.matchId, match.id))
       updated++
+      changedMatchIds.push(match.id)
     }
   }
 
@@ -144,6 +142,7 @@ export async function syncFinishedResultsFromApi(): Promise<{
     updated,
     skippedStatic: staticWithResult.size,
     apiFinishedCount: finishedFromApi.length,
+    changedMatchIds,
   }
 }
 
@@ -151,9 +150,12 @@ export async function syncFinishedResultsFromApi(): Promise<{
  * Otorga puntos a predicciones cuyo partido ya está en match_results.
  * Idempotente: solo actualiza filas con pointsAwarded IS NULL.
  */
-export async function scoreUnscoredPredictions(): Promise<number> {
+export async function scoreUnscoredPredictions(): Promise<{
+  newlyScored: number
+  updates: ScoreUpdate[]
+}> {
   const stored = await fetchStoredMatchResults()
-  if (stored.length === 0) return 0
+  if (stored.length === 0) return { newlyScored: 0, updates: [] }
 
   const resultByMatchId = new Map(
     stored.map(row => [row.matchId, { home: row.homeScore, away: row.awayScore }]),
@@ -171,6 +173,7 @@ export async function scoreUnscoredPredictions(): Promise<number> {
     .where(isNull(predictions.pointsAwarded))
 
   let newlyScored = 0
+  const updates: ScoreUpdate[] = []
   const now = new Date()
 
   for (const pred of unscored) {
@@ -194,25 +197,31 @@ export async function scoreUnscoredPredictions(): Promise<number> {
       )
 
     newlyScored++
+    updates.push({ matchId: pred.matchId, userId: pred.userId })
   }
 
-  return newlyScored
+  return { newlyScored, updates }
 }
 
 export async function syncMatchResultsAndScore(): Promise<SyncMatchResultsReport> {
   const sync = await syncFinishedResultsFromApi()
-  const newlyScored = await scoreUnscoredPredictions()
+  const scoring = await scoreUnscoredPredictions()
 
   return {
     apiFinishedCount: sync.apiFinishedCount,
     newlySynced: sync.newlySynced,
     updated: sync.updated,
     skippedStatic: sync.skippedStatic,
-    newlyScored,
+    newlyScored: scoring.newlyScored,
     totalStoredResults: sync.synced.length,
+    changedMatchIds: sync.changedMatchIds,
+    scoreUpdates: scoring.updates,
   }
 }
 
-export async function scoreFromStoredResultsOnly(): Promise<number> {
+export async function scoreFromStoredResultsOnly(): Promise<{
+  newlyScored: number
+  updates: ScoreUpdate[]
+}> {
   return scoreUnscoredPredictions()
 }
